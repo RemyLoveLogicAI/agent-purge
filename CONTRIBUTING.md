@@ -1,8 +1,8 @@
-# 参与开发
+# Contributing
 
-感谢帮助维护 agent-purge。提交前请用最小可复现步骤说明问题，并为行为修改添加回归测试。
+Thank you for helping maintain agent-purge. Before submitting, describe the issue with minimal steps to reproduce it and add regression tests for behavior changes.
 
-## 本地开发
+## Local development
 
 ```bash
 npm ci --ignore-scripts
@@ -11,54 +11,54 @@ npm test
 npm run web
 ```
 
-运行要求为 Node.js 20+，生产代码不依赖第三方 npm 包。Playwright 和 axe 仅用于开发测试。
+Node.js 20 or later is required. Production code has no third-party npm dependencies. Playwright and axe are used only for development testing.
 
-## 仓库结构
+## Repository structure
 
 ```text
-bin/             CLI 入口
-lib/             状态、通道、恢复、进程和验证服务
-backends/        各执行器的启动适配
-web/             原生 HTML / CSS / JavaScript 控制台
-magpie-plugin/   可选网关插件
-bench/           请求捕获和 CLI armor 使用的评测工具
-test/            隔离回归、插件与浏览器测试
-scripts/         构建、发行包验收和仓库检查
-packaging/       Windows 安装脚本与启动器源码
-docs/            用户指南、兼容性、架构和发布说明
+bin/             CLI entry point
+lib/             State, channels, recovery, processes, and verification services
+backends/        Launch adapters for each harness
+web/             Native HTML / CSS / JavaScript console
+magpie-plugin/   Optional gateway plugin
+bench/           Evaluation tools for request capture and CLI armor
+test/            Isolated regression, plugin, and browser tests
+scripts/         Build, release package validation, and repository checks
+packaging/       Windows installer scripts and launcher source
+docs/            User guides, compatibility, architecture, and release notes
 ```
 
-`bench/` 并非无用测试产物：`agent-purge verify` 和 `armor` 依赖其中的模块，需随运行包保留。测试源码与临时测试结果是不同的东西。
+`bench/` is not disposable test output: `agent-purge verify` and `armor` depend on its modules, which must be retained in the runtime package. Test source code and temporary test results are different things.
 
-## 测试命令
+## Test commands
 
-| 命令 | 范围 |
+| Command | Scope |
 |---|---|
-| `npm run check:repo` | Git 可提交文件、私有/生成文件排除、文档链接、发行白名单 |
-| `npm test` | 核心逻辑、文件恢复、执行器适配、Web API 和插件回归 |
-| `npm run test:package` | 实际 npm tarball 离线安装、CLI/Web 资源 |
-| `npm run test:ui` | 三浏览器、四种宽度、键盘与自动无障碍检查 |
-| `npm run test:harness` | 实际宿主请求捕获；需要本机安装相应宿主 |
-| `npm run test:artifacts` | Windows ZIP 和独立 EXE 验收 |
+| `npm run check:repo` | Git-trackable files, exclusion of private/generated files, documentation links, release allowlist |
+| `npm test` | Core logic, file recovery, harness adapters, Web API, and plugin regressions |
+| `npm run test:package` | Offline installation of the actual npm tarball, CLI/Web assets |
+| `npm run test:ui` | Three browsers, four widths, keyboard and automated accessibility checks |
+| `npm run test:harness` | Actual host request capture; requires the corresponding hosts to be installed locally |
+| `npm run test:artifacts` | Windows ZIP and standalone EXE validation |
 
-浏览器首次测试先执行：
+Before the first browser test, run:
 
 ```bash
 npx playwright install chromium firefox webkit
 npm run test:ui
 ```
 
-Windows 可用已有 Edge：`$env:PLAYWRIGHT_CHANNEL='msedge'; npm run test:ui -- --project=chromium`。
+On Windows, an existing Edge installation can be used: `$env:PLAYWRIGHT_CHANNEL='msedge'; npm run test:ui -- --project=chromium`.
 
-核心测试使用临时 HOME，不应读写真实人设、宿主配置或凭据。真实宿主测试默认使用本地测试 provider；它不是完整的操作系统网络沙箱。不要为通过测试而删除失败项或把模拟回调写成实机通过。
+Core tests use a temporary HOME and must not read or write real personas, host configuration, or credentials. Real-host tests use a local test provider by default; this is not a complete operating-system network sandbox. Do not delete failing tests or represent mocked callbacks as real-machine passes just to get tests to pass.
 
-## 提交规范
+## Submission guidelines
 
-- 保留 `package-lock.json`，开发依赖变化必须同步更新。
-- 新测试放进 `test/`，浏览器测试放进 `test/browser/`；不要把一次性调试脚本散落在根目录。
-- 测试输出、原始请求、开发日志归 `out/`；构建产物归 `dist/`。两者不进入 Git 或 npm。
-- `.pi/`、`.opencode/`、个人 `personas/`、`state.json` 和 `.env` 均为本地数据；不要用 `git add -f` 强制提交。
-- `docs/images/` 只保留当前产品截图；图标仅保留代码实际使用的版本。
-- 提交前检查 `git status --short` 与 `git diff --check`，勿直接提交所有本地文件。
+- Keep `package-lock.json` and update it when development dependencies change.
+- Put new tests in `test/` and browser tests in `test/browser/`; do not scatter one-off debugging scripts in the root.
+- Put test output, raw requests, and development logs in `out/`; put build artifacts in `dist/`. Neither belongs in Git or npm.
+- `.pi/`, `.opencode/`, personal `personas/`, `state.json`, and `.env` are local data; do not force them into Git with `git add -f`.
+- Keep only current product screenshots in `docs/images/`, and only versions of icons actually used by the code.
+- Check `git status --short` and `git diff --check` before submitting. Do not commit all local files indiscriminately.
 
-CI 会运行仓库检查与测试，但不会代替代码审查或自动发布。[架构约定](docs/reference/architecture.md) · [发布流程](docs/releasing.md)
+CI runs repository checks and tests, but does not replace code review or publish automatically. [Architecture conventions](docs/reference/architecture.md) · [Release process](docs/releasing.md)
