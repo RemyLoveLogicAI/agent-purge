@@ -185,7 +185,7 @@ export const MESSAGES = {
 		'settings.title': 'Settings',
 		'settings.subtitle': 'Interface language, appearance, desktop window behavior, and WebDAV backup. Everything is stored locally.',
 		'settings.languageTitle': 'Language',
-		'settings.languageDesc': 'The interface uses English for all locale settings.',
+		'settings.languageDesc': 'Locale settings affect some interface text and formatting.',
 		'settings.languageLabel': 'Interface Language',
 		'settings.languageAuto': 'Auto (System Locale)',
 		'settings.languageEn': 'English',
