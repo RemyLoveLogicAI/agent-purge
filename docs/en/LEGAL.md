@@ -1,29 +1,29 @@
-# 免责与合规声明
+# Legal Disclaimer and Compliance
 
-## 许可与适用范围
+## License and scope
 
-agent-purge 用于在使用者有权管理的 coding agent 中配置人设和提示词入口。项目采用 [MIT License](../../LICENSE)；本说明用于解释用途、风险和使用责任，不替代 LICENSE，也不对 MIT 授权范围附加额外限制。复制、修改或分发软件时，请按 LICENSE 保留必要的版权和许可声明。
+agent-purge configures persona and prompt entry points in coding agents that the user is authorized to manage. The project uses the [MIT License](../../LICENSE). This statement explains its purpose, risks, and user responsibilities; it does not replace the LICENSE or impose additional restrictions on the scope of MIT authorization. When copying, modifying, or distributing the software, retain the copyright and license notices required by the LICENSE.
 
-## 合法、授权使用
+## Lawful, authorized use
 
-本项目仅为本地多宿主配置管理与开发调试工具，旨在帮助开发者统一管理合法工作人设。软件本身不提供、不分发任何用于越狱、对抗安全审查或侵犯第三方权益的提示词载荷。
+This project is a local multi-host configuration management and development debugging tool, intended to help developers manage legitimate working personas consistently. The software itself neither provides nor distributes prompt payloads for jailbreaking, adversarial safety circumvention, or infringing third-party rights.
 
-使用者应遵守适用法律法规、宿主软件与模型服务的条款，以及相关第三方授权。严禁将本项目用于未经授权的系统访问、安全对抗、攻击、数据窃取、隐私侵害或其他违法违规活动。安装或使用本工具不代表你获得了操作第三方系统、使用他人数据或调用模型服务的授权，使用者须自行对其使用的提示词内容及操作后果承担全部责任。
+Users must comply with applicable laws and regulations, the terms of host software and model services, and relevant third-party permissions. Use for unauthorized system access, security attacks, data theft, privacy violations, or other unlawful or improper activities is strictly prohibited. Installing or using this tool does not grant authorization to operate third-party systems, use others' data, or invoke model services. Users are responsible for their prompt content and the consequences of their actions.
 
-## 配置与模型行为风险
+## Configuration and model behavior risks
 
-提示词改写可能改变模型输出、工具调用倾向和原有工作流程；严格替换也可能移除可控入口中的原有说明。本项目不保证模型输出正确、安全、合法或适合特定用途，也不替代宿主的权限控制、沙箱、人工审核和安全策略。
+Prompt rewriting can change model output, tool-calling tendencies, and existing workflows. Strict replacement can also remove existing instructions from controllable entry points. This project does not guarantee that model output is accurate, safe, lawful, or suitable for any particular purpose, and does not replace host permission controls, sandboxes, human review, or safety policies.
 
-用于重要项目之前，请备份配置并在隔离环境测试。执行敏感操作前应自行审核模型输出；恢复遇到冲突时，保留原文件和恢复凭据，不要直接删除备份。
+Before using it on important projects, back up configurations and test in an isolated environment. Review model output before sensitive operations. If restoration encounters a conflict, keep the original file and recovery credentials; do not simply delete the backup.
 
-## 数据与网络
+## Data and network
 
-人设和配置默认保存在本机，但启用后会随宿主请求发送给其配置的模型服务。更新检查、软件安装和宿主运行可能访问外部网络。请勿在人设中放入不应发送给服务提供方的密钥、个人信息或机密数据；本工具不提供完整的网络隔离或数据防泄漏保障。
+Personas and configuration are stored locally by default, but when enabled they are sent with host requests to the configured model service. Update checks, software installation, and host operation may access external networks. Do not put keys, personal information, or confidential data in personas if they should not be sent to the service provider. This tool does not provide complete network isolation or data loss prevention.
 
-## 保证与责任
+## Warranty and liability
 
-软件按 LICENSE 约定以“按现状”方式提供，不作其中所列的明示或默示保证。使用者应评估自身使用场景、保管凭据并审核产生的结果。在适用法律允许的范围内，作者与贡献者的保证排除及责任限制以 LICENSE 为准；本说明不排除法律规定不得排除的责任。
+The software is provided "as is" under the LICENSE, without the express or implied warranties listed there. Users should assess their own use cases, safeguard credentials, and review the results. To the extent permitted by applicable law, the exclusions of warranties and limitations of liability for authors and contributors are governed by the LICENSE. This statement does not exclude liability that cannot legally be excluded.
 
-## 第三方独立性
+## Third-party independence
 
-本项目是独立开发的工具，与所支持的 coding agent、模型提供商及其关联主体不存在默认的隶属、授权、合作或背书关系。文中的产品名称和标识归相应权利人所有，兼容性说明不代表第三方对本项目作出认可或担保。
+This independently developed tool has no implied affiliation, authorization, partnership, or endorsement relationship with the supported coding agents, model providers, or their affiliates. Product names and marks belong to their respective owners. Compatibility descriptions do not imply third-party approval or warranty of this project.
