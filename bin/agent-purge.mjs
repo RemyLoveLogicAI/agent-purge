@@ -29,7 +29,7 @@ import { settingsOf } from "../lib/settings.mjs";
 const DATA = dataHome();
 // 自带窗口宿主（WebView2）：瘦包与安装器里有它，窗口就是本应用的；bun 单文件产物没有，退回浏览器 --app。
 const nativeWindowExe = isCompiled() ? null : join(ROOT, "agent-purge-window.exe");
-const windowEngineLabel = opened => (opened.engine === "webview2" ? "原生窗口" : opened.browser);
+const windowEngineLabel = opened => (opened.engine === "webview2" ? "Native window" : opened.browser);
 function cliLocale() {
 	let setting;
 	try {
@@ -41,7 +41,7 @@ function cliLocale() {
 const L = (zh, en) => pickText(cliLocale(), zh, en);
 const matrix = (() => {
 	try { return JSON.parse(readResource("matrix.json").toString("utf8")); }
-	catch (error) { throw new Error(`无法加载 matrix.json：${error.message}`, { cause: error }); }
+	catch (error) { throw new Error(`Failed to load matrix.json: ${error.message}`, { cause: error }); }
 })();
 // 这些家只有“整段替换/追加”两个启动口，没有宿主提示词可读：replace 实际按 strict 执行。
 const STRICT_REPLACE = new Set(["codex", "claude", "grok", "codebuddy", "hermes"]);
@@ -75,23 +75,23 @@ if (!cleanPreview) {
 	ensureDataHome(isCompiled() ? null : ROOT);
 	installCrashHandlers();
 	const recovered = recover(); // 帮助与清理预览不初始化数据、不恢复 journal
-	if (recovered > 0) console.log(`[restore] 回滚了 ${recovered} 个上次残留的配置文件`);
+	if (recovered > 0) console.log(`[restore] Rolled back ${recovered} configuration file(s) left from the previous run`);
 }
 
 // 编译态与脚本态使用同一个 Web 入口；0 表示系统分配空闲端口，供隔离 smoke 使用。
 if (argv[0] === "--serve") {
 	let port = argv[1] === undefined ? 7788 : Number(argv[1]);
-	if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("端口必须为 0..65535 的整数");
+	if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("Port must be an integer from 0 to 65535");
 	// 低层 --serve 也必须处理 Windows/Hyper-V 的保留端口 EACCES，不能只让 web 子命令回退。
 	if (port !== 0) {
 		const bind = await bindState(port);
 		if (!bind.ok && bind.code === "EACCES") {
 			const fallback = await findFreePort(7890, 7909);
 			if (!fallback) {
-				console.error(`端口 ${port} 被系统保留（EACCES），7890-7909 也没有空闲端口；请用 --serve <port> 指定其他端口。`);
+				console.error(`Port ${port} is reserved by the system (EACCES), and no ports are available in 7890-7909; use --serve <port> to specify another port.`);
 				process.exit(1);
 			}
-			console.warn(`端口 ${port} 被系统保留（EACCES），改用 ${fallback}。`);
+			console.warn(`Port ${port} is reserved by the system (EACCES); using ${fallback} instead.`);
 			port = fallback;
 		}
 	}
@@ -100,10 +100,10 @@ if (argv[0] === "--serve") {
 	const claim = registerInstance(DATA, port);
 	if (!claim.ok) {
 		if (claim.error) {
-			console.error(`控制台实例登记失败：${claim.error.message}`);
+			console.error(`Failed to register console instance: ${claim.error.message}`);
 			process.exit(1);
 		}
-		console.log(`agent-purge 控制台已在运行（端口 ${claim.existing?.port ?? "?"}），无需重复启动。`);
+		console.log(`The agent-purge console is already running (port ${claim.existing?.port ?? "?"}); no need to start it again.`);
 		process.exit(0);
 	}
 	serveWeb(port, {
@@ -982,7 +982,7 @@ async function waitForInstanceWindow(home = DATA, timeout = 4000) {
 
 async function webCmd(options = {}) {
 	const port = Number(flag("--port", "7788"));
-	if (!Number.isInteger(port) || port < 0 || port > 65535) die("端口必须为 0..65535 的整数");
+	if (!Number.isInteger(port) || port < 0 || port > 65535) die("Port must be an integer from 0 to 65535");
 	const noOpen = argv.includes("--no-open");
 	// 关窗退出：桌面端（exe 双击 / 桌面快捷方式）默认跟随设置页里的「关闭窗口时」；
 	// 命令行 --auto-exit / --no-auto-exit 优先级最高，终端 `agent-purge web` 仍由终端托管。
