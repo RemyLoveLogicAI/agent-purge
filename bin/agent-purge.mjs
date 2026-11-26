@@ -850,7 +850,7 @@ async function lsCmd() {
 	console.log(L(`\n* = active（agent-purge use <id> 切换）`, `\n* = active (switch with: agent-purge use <id>)`));
 }
 
-/** 探测端口能否绑定；Windows 的 Hyper-V 保留段会返回 EACCES，而不是 EADDRINUSE。 */
+/** Probe whether a port can bind; Windows Hyper-V reserved ranges return EACCES rather than EADDRINUSE. */
 async function bindState(port) {
 	const { createServer } = await import("node:net");
 	return await new Promise(resolve => {
@@ -867,7 +867,7 @@ async function findFreePort(start, end) {
 	}
 	return null;
 }
-/** 设置页里的「关闭窗口时」：读取失败就当退出（老行为），不让人对着关不掉的窗口发呆。 */
+/** Window-close setting: default to exit on read failure, retaining previous behavior. */
 function exitOnCloseSetting() {
 	try {
 		const { state } = loadState(DATA);
@@ -878,8 +878,8 @@ function exitOnCloseSetting() {
 }
 
 /**
- * 原生窗口宿主关窗前的确认文案：空字符串表示不确认。
- * 文案在 Node 侧决定（设置页的「关闭窗口前先确认」+「关闭窗口时」），宿主只负责弹一个原生对话框。
+ * Native window host close-confirmation text; an empty string means no confirmation.
+ * Node determines the text from close settings; the host only displays a native dialog.
  */
 function closeConfirmText() {
 	try {
@@ -895,9 +895,9 @@ function closeConfirmText() {
 }
 
 /**
- * 探测某端口上是不是活着的 agent-purge。
- * /api/instance 是只报身份的秒回探针；老版本没有它，退回 /api/state 的形状判断
- * （/api/state 会做 detect，服务忙的时候可能几秒才回，所以只当兜底）。
+ * Probe whether a running agent-purge service is on a port.
+ * /api/instance is a quick identity probe; older versions fall back to checking /api/state shape
+ * (/api/state runs detection and can take seconds when busy).
  */
 async function probeServer(port) {
 	const probes = [
@@ -916,9 +916,9 @@ async function probeServer(port) {
 }
 
 /**
- * 本数据目录里登记着、并且进程还活着的控制台实例。
- * 登记就是锁：进程活着就等于服务活着，不再多探一次端口 ——
- * /api/state 要跑 detect，首次请求可能几秒才回，拿它当存活判定会把正常的重复启动误判成「没实例」。
+ * Console instance registered in this data directory whose process is still alive.
+ * The registration is the lock: a live process means a live service without an extra port probe.
+ * /api/state performs detection and may take seconds initially, so it would misclassify a healthy instance.
  */
 function liveInstance(home = DATA) {
 	const record = readInstance(home);
@@ -928,32 +928,32 @@ function liveInstance(home = DATA) {
 }
 
 /**
- * 复用已经在跑的控制台：单例的意思是「只把老窗口叫到前台」，绝不再开第二个页面。
- * 只有窗口真的不在了（用户关了窗口、浏览器崩了）才补开一扇，并把新 pid 记回登记。
+ * Reuse a running console: bring its existing window forward rather than opening another page.
+ * Open a replacement only when the window is gone and update the recorded PID.
  */
 async function reuseInstance(record, { noOpen }) {
 	const url = `http://127.0.0.1:${record.port}`;
-	if (noOpen) { console.log(`agent-purge 服务已在 ${url} 运行`); return; }
+	if (noOpen) { console.log(`agent-purge service is already running at ${url}`); return; }
 	const { openAppWindowWithFallback: openAppWindow, focusConsoleWindow, windowProfileDir } = await import("../lib/window.mjs");
 	const profileDir = windowProfileDir(DATA);
 	const window = focusConsoleWindow({ pid: record.windowPid, profileDir });
 	if (window.focused) {
-		console.log(`✓ agent-purge 已在运行，已切换到已有窗口 → ${url}`);
+		console.log(`✓ agent-purge is running; focused its existing window → ${url}`);
 		return;
 	}
-	// 窗口还在、只是系统不让我们抢焦点：让用户自己点任务栏，也别开第二扇
+	// If the window exists but cannot be focused, ask the user to select it on the taskbar rather than opening another.
 	if (window.found) {
-		console.log(`✓ agent-purge 已在运行，窗口已在任务栏 → ${url}`);
+		console.log(`✓ agent-purge is running; its window is on the taskbar → ${url}`);
 		return;
 	}
 	const opened = await openAppWindow(url, { profileDir, nativeExe: nativeWindowExe, confirmClose: closeConfirmText() });
 	if (opened.mode === "app" && opened.pid) updateWindow(DATA, record.pid, opened.pid);
 	console.log(opened.mode === "app"
-		? `✓ agent-purge 已在运行，已打开控制台窗口 → ${url}`
-		: `agent-purge 已在 ${url} 运行，请在浏览器中打开该地址`);
+		? `✓ agent-purge is running; opened a console window → ${url}`
+		: `agent-purge is running at ${url}; open this address in a browser`);
 }
 
-/** 等子进程把实例登记写出来（--detach 时服务是独立进程）。 */
+/** Wait for the child process to write instance registration (--detach runs a separate service process). */
 async function waitForInstance(pid, timeout = 5000) {
 	const deadline = Date.now() + timeout;
 	while (Date.now() < deadline) {
@@ -966,8 +966,8 @@ async function waitForInstance(pid, timeout = 5000) {
 }
 
 /**
- * 等一个正在启动的同类实例把窗口开出来（连点两下时，先到的进程已经登记、窗口还没开）。
- * 没有实例在启动就直接返回 null，别让「端口被别的程序占着」白等。
+ * Wait for a starting instance to open its window (on double-click, registration may precede window creation).
+ * Return null immediately if no instance is starting; do not wait when another program holds the port.
  */
 async function waitForInstanceWindow(home = DATA, timeout = 4000) {
 	const deadline = Date.now() + timeout;
@@ -984,20 +984,20 @@ async function webCmd(options = {}) {
 	const port = Number(flag("--port", "7788"));
 	if (!Number.isInteger(port) || port < 0 || port > 65535) die("Port must be an integer from 0 to 65535");
 	const noOpen = argv.includes("--no-open");
-	// 关窗退出：桌面端（exe 双击 / 桌面快捷方式）默认跟随设置页里的「关闭窗口时」；
-	// 命令行 --auto-exit / --no-auto-exit 优先级最高，终端 `agent-purge web` 仍由终端托管。
+	// Exit on close: desktop mode defaults to the settings page window-close setting;
+	// CLI --auto-exit / --no-auto-exit take precedence; terminal `agent-purge web` remains terminal-managed.
 	const autoExitFlag = argv.includes("--auto-exit") ? true : argv.includes("--no-auto-exit") ? false : null;
-	// 桌面窗口形态：编译态 exe、显式 --desktop，或安装器快捷方式传的 --auto-exit
-	// （安装器是 Node 瘦包，isCompiled() 为 false，只能靠参数认出「这是窗口」）
+	// Desktop window mode: compiled exe, explicit --desktop, or installer shortcut --auto-exit
+	// (the Node thin installer is not compiled, so its window mode is identified by arguments).
 	const desktopManaged = !argv.includes("--no-desktop") &&
 		(argv.includes("--desktop") || isCompiled() || argv.includes("--auto-exit"));
 	const autoExit = autoExitFlag ?? desktopManaged;
-	// 「关窗要不要退」每次现读设置：在设置页改成常驻后，下一次关窗就留下服务，不用重启进程
+	// Read exit-on-close settings live so persistent mode applies on the next close without restarting.
 	const exitPolicy = () => (autoExitFlag === true ? true : autoExitFlag === false ? false : desktopManaged ? exitOnCloseSetting() : true);
 	const { focusConsoleWindow, openAppWindowWithFallback: openAppWindow, windowProfileDir } = await import("../lib/window.mjs");
 
-	// 单例：同一个数据目录里已经有活着的控制台，就把它的窗口叫到前台然后退出。
-	// 这一步必须在绑端口之前——否则桌面端重复双击会多起一个服务、多开一个页面（issue #14）。
+	// Singleton: focus the running console window for the same data directory and exit.
+	// Do this before binding a port to prevent duplicate services and pages on repeated double-clicks (issue #14).
 	const running = liveInstance();
 	if (running) {
 		const ready = Number.isInteger(running.windowPid) && running.windowPid > 0
@@ -1011,8 +1011,8 @@ async function webCmd(options = {}) {
 	if (port !== 0) {
 		const bind = await bindState(port);
 		if (!bind.ok) {
-			// 端口不可用：可能是另一扇正在启动的同类实例（登记刚写出、窗口还没开），也可能是老版本。
-			// 先给并发的那个一点时间，拿到的实例直接复用，别再顺延端口起第二个服务。
+			// An unavailable port may belong to another starting instance or an older version.
+			// Allow a concurrent instance time to start and reuse it rather than opening a second service on another port.
 			const concurrent = await waitForInstanceWindow();
 			if (concurrent) {
 				await reuseInstance(concurrent, { noOpen });
@@ -1020,19 +1020,19 @@ async function webCmd(options = {}) {
 			}
 			if (!(await probeServer(port))) {
 				const fallback = await findFreePort(7890, 7909);
-				if (!fallback) die(`端口 ${port} 不可用（${bind.code ?? "unknown"}），7890-7909 也没有空闲端口；请用 --port 指定。`);
+				if (!fallback) die(`Port ${port} is unavailable (${bind.code ?? "unknown"}), and ports 7890-7909 are occupied; specify --port.`);
 				activePort = fallback;
-				console.warn(`端口 ${port} 不可用（${bind.code ?? "unknown"}），改用 ${fallback}。`);
+				console.warn(`Port ${port} is unavailable (${bind.code ?? "unknown"}); using ${fallback}.`);
 			}
 		}
 	}
 	const url = `http://127.0.0.1:${activePort}`;
 	const probeAlive = () => probeServer(activePort);
 
-	// --detach：脱离当前终端后台存活，日志丢弃
+	// --detach: run in background independent of the terminal; discard logs.
 	if (argv.includes("--detach")) {
-		if (port === 0) die("--detach 需要明确端口；随机端口请用前台 web --port 0 --no-open");
-		// 源码态 execPath 是 node，得连脚本路径一起给；编译态 execPath 就是 exe 本体
+		if (port === 0) die("--detach requires an explicit port; use foreground web --port 0 --no-open for a random port");
+		// In source mode execPath is node and needs the script path; in compiled mode it is the executable.
 		const serveArgs = ["--serve", String(activePort)];
 		if (autoExit) serveArgs.push("--auto-exit");
 		if (desktopManaged) serveArgs.push("--desktop");
@@ -1045,7 +1045,7 @@ async function webCmd(options = {}) {
 			env: { ...process.env, AGENT_PURGE_HOME: DATA },
 		});
 		child.unref();
-		// 服务进程自己登记实例；等它写完，窗口 pid 才能补进同一条记录
+		// The service registers itself; wait until it writes before adding the window PID to the same record.
 		await waitForInstance(child.pid);
 		if (!noOpen) {
 			const opened = await openAppWindow(url, { profileDir: windowProfileDir(DATA), nativeExe: nativeWindowExe, confirmClose: closeConfirmText() });
@@ -1056,7 +1056,7 @@ async function webCmd(options = {}) {
 		process.exit(0);
 	}
 
-	// 抢登记：同一数据目录只允许一个进程绑定控制台；抢不到说明刚好有人抢先起了
+	// Acquire registration: only one process may bind the console per data directory.
 	const claim = registerInstance(DATA, activePort);
 	if (!claim.ok) {
 		if (claim.existing) {
@@ -1068,11 +1068,11 @@ async function webCmd(options = {}) {
 
 	const onServerError = async (e) => {
 		if (port !== 0) releaseInstance(DATA, process.pid);
-		// 端口被占时（如桌面启动器二次双击、老实例未退出）：先探测是否正是活着的 agent-purge
+		// If the port is occupied, first probe whether it belongs to a live agent-purge instance.
 		if (e.code === "EADDRINUSE") {
 			if (await probeAlive()) {
-				// 老版本没有单例登记（或实例在别的数据目录）：先找现成的控制台窗口，
-				// 找得到就只聚焦——升级后老窗口还在的情况下，也不能再补一扇新的（issue #14）。
+				// Older versions lack singleton registration (or use another data directory): find an existing console window first,
+				// and focus it if found rather than opening another after an upgrade (issue #14).
 				const existing = noOpen ? null : focusConsoleWindow({ profileDir: windowProfileDir(DATA) });
 				if (existing?.focused) console.log(L(`✓ 发现已在运行的 agent-purge 服务，已切换到已有窗口 → ${url}`, `✓ Found running agent-purge service; focused existing window → ${url}`));
 				else if (existing?.found) console.log(L(`✓ 发现已在运行的 agent-purge 服务，窗口已在任务栏 → ${url}`, `✓ Found running agent-purge service; window is in taskbar → ${url}`));
@@ -1081,7 +1081,7 @@ async function webCmd(options = {}) {
 					if (res.mode === "app") console.log(L(`✓ 发现已在运行的 agent-purge 服务，已作为独立桌面窗口打开（${windowEngineLabel(res)}）`, `✓ Found running agent-purge service; opened desktop window (${windowEngineLabel(res)})`));
 					else console.log(L(`✓ 发现已在运行的 agent-purge 服务，已在浏览器中打开：${url}`, `✓ Found running agent-purge service; opened in browser: ${url}`));
 				} else {
-					console.log(L(`agent-purge 服务已在 ${url} 运行`, `agent-purge service already running at ${url}`));
+					console.log(L(`agent-purge service is already running at ${url}`, `agent-purge service already running at ${url}`));
 				}
 				process.exit(0);
 			}
@@ -1093,7 +1093,7 @@ async function webCmd(options = {}) {
 		process.exit(1);
 	};
 
-	// 桌面窗口还活着服务就不退：窗口是本实例的本体，留一个连不上的旧页面只会引出第二扇窗口
+	// Keep the service alive while the desktop window lives, avoiding an unreachable old page and a duplicate window.
 	const server = serveWeb(activePort, {
 		autoExit,
 		desktop: desktopManaged,
@@ -1105,7 +1105,7 @@ async function webCmd(options = {}) {
 		server.once("listening", async () => {
 			const res = await openAppWindow(`http://127.0.0.1:${server.address().port}`, { profileDir: windowProfileDir(DATA), nativeExe: nativeWindowExe, confirmClose: closeConfirmText() });
 			if (res.mode === "app" && port !== 0) updateWindow(DATA, process.pid, res.pid);
-			if (res.mode === "app") console.log(`✓ 已作为独立桌面窗口打开（无标签/地址栏，原生客户端体验）`);
+			if (res.mode === "app") console.log(`✓ Opened as a standalone desktop window (no tabs or address bar).`);
 		});
 	}
 	return server;
