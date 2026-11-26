@@ -39,7 +39,7 @@ test("off launch does not require persona or materialize files", () => {
  patchState(root, { persona: null, default: { harness: "pi", mode: "off" }, overrides: {} });
  rmSync(join(root, "personas"), { recursive: true });
  const r = cli("pi", "--mode", "off", "--dry-run");
- assert.equal(r.status, 0, r.stderr); assert.doesNotMatch(r.stderr, /没有|找不到.*人设/);
+ assert.equal(r.status, 0, r.stderr); assert.doesNotMatch(r.stderr, /\u6ca1\u6709|\u627e\u4e0d\u5230.*\u4eba\u8bbe/);
  assert.equal(existsSync(join(root, "personas", "active.md")), false);
  assert.equal(loadState(root).state.default.mode, "off");
 });
@@ -47,5 +47,5 @@ test("CLI delimiter preserves host flags without interpreting them as agent-purg
  const r = cli("codex", "--mode", "off", "--dry-run", "--", "--help", "--mode", "host-only", "--ask", "host question");
  assert.equal(r.status, 0, r.stderr);
  assert.match(r.stdout, /\[cmd\].*--help.*--mode host-only.*--ask/);
- assert.doesNotMatch(r.stdout, /① 选/);
+ assert.doesNotMatch(r.stdout, /① \u9009/);
 });

@@ -27,7 +27,7 @@ try {
   assert.ok(names.includes('lib/templates/personas/neutral.md'));
   for (const file of names) assert.doesNotMatch(file, /^(?:personas|out|dist|node_modules|\.tmp|\.pi)\//);
   for (const file of packed.files) assert.equal(publicationProblem(file.path, { distribution: true, size: file.size }), null, file.path);
-  const prefix = join(sandbox, '安装 space');
+  const prefix = join(sandbox, '\u5b89\u88c5 space');
   npm(['install', '--prefix', prefix, '--ignore-scripts', '--no-audit', '--no-fund', '--offline', join(output, packed.filename)], sandbox);
   const installed = join(prefix, 'node_modules', 'agent-purge');
   assert.equal(JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8')).version, packed.version);

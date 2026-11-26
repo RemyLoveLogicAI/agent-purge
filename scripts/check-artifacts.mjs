@@ -14,7 +14,7 @@ const dist = join(source, 'dist'), version = readJSON(join(source, 'package.json
 const root = mkdtempSync(join(tmpdir(), 'ap-artifacts-'));
 const quote = value => `'${value.replaceAll("'", "''")}'`;
 try {
-  const unpack = join(root, '解压 space');
+  const unpack = join(root, '\u89e3\u538b space');
   const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
     `$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::ExtractToDirectory(${quote(join(dist, `agent-purge-${version}.zip`))}, ${quote(unpack)})`],
     { encoding: 'utf8', windowsHide: true, timeout: 120000 });

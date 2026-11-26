@@ -114,7 +114,7 @@ test('second session joins an identical swap but a different one still conflicts
  const f = join(dir, 'join'); writeFileSync(f, 'original');
  const pa = await owner(f);
  assert.equal(journals().length, 1);
- const undo = swapFile(f, 'temporary'); // 同内容：不加锁、不新增 journal
+ const undo = swapFile(f, 'temporary'); // Same content: no lock or new journal
  assert.equal(journals().length, 1); undo();
  assert.throws(() => swapFile(f, 'other'), /owner PID \d+/);
  await kill(pa); assert.equal(recover(collect), 1); assert.equal(readFileSync(f, 'utf8'), 'original');

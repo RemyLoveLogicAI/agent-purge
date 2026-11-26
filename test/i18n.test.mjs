@@ -64,11 +64,11 @@ test("CLI --help respects LANG / LC_ALL and defaults to English outside Chinese 
 
 	const enOut = runHelp({ LANG: "en_US.UTF-8" });
 	assert.match(enOut, /One persona, many coding agents/);
-	assert.doesNotMatch(enOut, /把任意 harness 的系统提示词换成/);
+	assert.doesNotMatch(enOut, /\u628a\u4efb\u610f harness \u7684\u7cfb\u7edf\u63d0\u793a\u8bcd\u6362\u6210/);
 
 	const cOut = runHelp({ LC_ALL: "C", LANG: "zh_CN.UTF-8" });
 	assert.match(cOut, /One persona, many coding agents/);
 
 	const zhOut = runHelp({ LANG: "zh_CN.UTF-8" });
-	assert.match(zhOut, /把任意 harness 的系统提示词换成/);
+	assert.match(zhOut, /\u628a\u4efb\u610f harness \u7684\u7cfb\u7edf\u63d0\u793a\u8bcd\u6362\u6210/);
 });

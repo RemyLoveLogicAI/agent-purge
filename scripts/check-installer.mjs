@@ -73,7 +73,7 @@ const env = isolatedEnv(root);
 // Only the shared Node runtime and Windows tools remain visible, not real harnesses.
 for (const key of Object.keys(env)) if (key.toUpperCase() === 'PATH') delete env[key];
 env.PATH = `${dirname(process.execPath)};${system32}`;
-const app = join(root, '安装 space'), cli = join(app, 'bin', 'agent-purge.mjs');
+const app = join(root, '\u5b89\u88c5 space'), cli = join(app, 'bin', 'agent-purge.mjs');
 const uninstaller = join(app, 'unins000.exe');
 const log = join(root, 'acceptance.json');
 const report = { schema: 1, startedAt: new Date().toISOString(), version,
@@ -220,10 +220,10 @@ async function installedDesktop() {
       await page.locator('#show-all').check();
       const card = page.locator('.tool-card[data-id="dsh"]');
       await card.waitFor({ state: 'visible' });
-      assert.doesNotMatch(await card.locator('.tool-card-meta').innerText(), /专属|Custom:/);
+      assert.doesNotMatch(await card.locator('.tool-card-meta').innerText(), /\u4e13\u5c5e|Custom:/);
       await card.locator('.tool-card-more').click();
       await page.locator('#panel-dsh').waitFor({ state: 'visible' });
-      assert.doesNotMatch(await page.locator('#panel-dsh h2').innerText(), /专属|Custom/);
+      assert.doesNotMatch(await page.locator('#panel-dsh h2').innerText(), /\u4e13\u5c5e|Custom/);
       assert.equal(await page.locator('select[data-hpersona="dsh"]').inputValue(), 'neutral',
         'Removing the badge must not remove independent persona settings');
       await page.screenshot({ path: join(root, 'desktop-dsh.png') });
@@ -271,7 +271,7 @@ async function installedDesktop() {
 
 let managed;
 const rules = join(env.PI_CODING_AGENT_DIR, 'AGENTS.md');
-const original = Buffer.from('# user rules\r\n原有配置 KEEP\r\n');
+const original = Buffer.from('# user rules\r\n\u539f\u6709\u914d\u7f6e KEEP\r\n');
 try {
   const missingNode = await run(setup, installArgs('missing-node'), { childEnv: { ...env, PATH: system32 } });
   assert.notEqual(missingNode.code, 0, 'Installer accepted missing Node');
@@ -289,7 +289,7 @@ try {
 
   await runCLI('use', 'neutral');
   const persona = join(env.AGENT_PURGE_HOME, 'personas', 'neutral.md');
-  writeFileSync(persona, readFileSync(persona, 'utf8') + '\nUSER_PERSONA_KEEP_验收\n');
+  writeFileSync(persona, readFileSync(persona, 'utf8') + '\nUSER_PERSONA_KEEP_\u9a8c\u6536\n');
   writeFileSync(rules, original);
   await runCLI('install', 'pi');
   managed = readFileSync(rules);
