@@ -66,7 +66,7 @@ test('issues #1/#6: fresh defaults save without toggling modes; legacy deep link
   await expect(page.locator('#notice')).toContainText('已应用');
   await page.goto(`${app.url}/#personas`);
   await expect(page.locator('#page-library')).toBeVisible();
-  await page.getByRole('button', { name: /中性模板/ }).click();
+  await page.getByRole('button', { name: /Neutral template/ }).click();
   await expect(page.locator('#edit-desc')).toHaveValue(/起步/);
   await expect(page.locator('#edit-body')).not.toHaveValue('');
   await page.getByRole('button', { name: '控制台', exact: true }).click();
@@ -125,7 +125,7 @@ test('pause, resume and clean preserve user personas and roll back managed rules
   await page.locator('#disarm-all').click();
   await expect(page.locator('#notice')).toContainText('人设和用户修改已保留');
   await expect(page.locator('[data-toggle=pi]')).not.toBeChecked();
-  expect(readFileSync(join(app.env.AGENT_PURGE_HOME, 'personas', 'neutral.md'), 'utf8')).toContain('中性模板');
+  expect(readFileSync(join(app.env.AGENT_PURGE_HOME, 'personas', 'neutral.md'), 'utf8')).toContain('Neutral template');
 });
 
 test('verification badges distinguish no request, process error, off success and actual marker miss', async ({ page }) => {
@@ -161,7 +161,7 @@ test('rule files page writes, identifies persona, supports global scope and remo
   await page.locator('.project-coverage summary').click();
   await expect(page.locator('.project-coverage-list')).toContainText('Claude Code');
   await card.getByRole('button', { name: '写入此项目' }).click();
-  await expect(card.locator('.chip')).toHaveText('已写入 · 中性模板');
+  await expect(card.locator('.chip')).toHaveText('已写入 · Neutral template');
   await expect(page.locator('.project-history')).toContainText('写入');
   await expect(card.locator('.project-after')).toBeVisible();
   const file = join(app.root, 'AGENTS.md');
@@ -173,7 +173,7 @@ test('rule files page writes, identifies persona, supports global scope and remo
   const piGlobal = page.locator('.project-card').filter({ hasText: 'AGENTS.md (Pi)' });
   await expect(piGlobal).toContainText('写入全局文件');
   await piGlobal.getByRole('button', { name: '写入全局文件' }).click();
-  await expect(piGlobal.locator('.chip')).toHaveText('已写入 · 中性模板');
+  await expect(piGlobal.locator('.chip')).toHaveText('已写入 · Neutral template');
   const globalFile = join(app.env.PI_CODING_AGENT_DIR, 'AGENTS.md');
   expect(readFileSync(globalFile, 'utf8')).toContain('# >>> agent-purge');
   await piGlobal.getByRole('button', { name: '移除', exact: true }).click();
@@ -184,7 +184,7 @@ test('rules-only project file writes without an owner selector', async ({ page, 
   const card = page.locator('.project-card').filter({ hasText: '.clinerules' });
   await expect(card).toContainText('写入此项目');
   await card.getByRole('button', { name: '写入此项目' }).click();
-  await expect(card.locator('.chip')).toHaveText('已写入 · 中性模板');
+  await expect(card.locator('.chip')).toHaveText('已写入 · Neutral template');
   const file = join(app.root, '.clinerules');
   expect(readFileSync(file, 'utf8')).toContain('# >>> agent-purge');
   await card.getByRole('button', { name: '移除', exact: true }).click();
@@ -222,7 +222,7 @@ for (const width of [1440, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const [name, route] of [['控制台', 'console'], ['人设库', 'library'], ['规则文件', 'project'], ['测试与记录', 'diagnostics'], ['设置', 'settings']]) {
       await page.getByRole('button', { name, exact: true }).click();
-      if (route === 'library') await page.getByRole('button', { name: /中性模板/ }).click();
+      if (route === 'library') await page.getByRole('button', { name: /Neutral template/ }).click();
       await expect(page.locator(`#page-${route}`)).toBeVisible();
       const sizes = await page.evaluate(() => ({ viewport: innerWidth, content: document.documentElement.scrollWidth }));
       expect(sizes.content, `${route} overflow at ${width}px`).toBeLessThanOrEqual(sizes.viewport);
@@ -303,7 +303,7 @@ test('dark mode: follows system, toggles via header & Settings, persists across 
 
   for (const [name, route] of [['控制台', 'console'], ['人设库', 'library'], ['规则文件', 'project'], ['测试与记录', 'diagnostics'], ['设置', 'settings']]) {
     await page.getByRole('button', { name, exact: true }).click();
-    if (route === 'library') await page.getByRole('button', { name: /中性模板/ }).click();
+    if (route === 'library') await page.getByRole('button', { name: /Neutral template/ }).click();
     await expect(page.locator(`#page-${route}`)).toBeVisible();
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     expect(results.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) }))).toEqual([]);
