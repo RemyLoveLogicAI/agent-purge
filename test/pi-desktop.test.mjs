@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { installPlugin, probePlugin, pluginDir, uninstallPlugin } from "../lib/pi-desktop.mjs";
 import { extensionSource } from "../lib/extension.mjs";
 
-// PI-Desktop 的扩展只能由插件贡献：这里验「装进 registry + 文件齐全」和「卸干净」。
+// PI-Desktop extensions must be contributed by plugins: verify registry installation, complete files, and clean removal.
 function sandbox(t) {
 	const dir = mkdtempSync(join(tmpdir(), "ap-pidesk-"));
 	const data = join(dir, "data");
@@ -22,7 +22,7 @@ function sandbox(t) {
 
 const registryOf = (data) => JSON.parse(readFileSync(join(data, "plugins", "registry.json"), "utf8"));
 
-test("pi-desktop: 安装插件会写入源码/manifest/包装器并登记到 registry", (t) => {
+test("pi-desktop: installing the plugin writes source, manifest, wrapper and registry entry", (t) => {
 	const data = sandbox(t);
 	const r = installPlugin("C:/ap-home");
 	assert.ok(r.file, r.error);
@@ -35,15 +35,15 @@ test("pi-desktop: 安装插件会写入源码/manifest/包装器并登记到 reg
 	assert.deepEqual(manifest.permissions, ["agent.extension"]);
 
 	const entry = registryOf(data).find((p) => p.id === "imported.agent-purge");
-	assert.ok(entry, "registry 里没有登记");
+	assert.ok(entry, "Missing registry entry");
 	assert.equal(entry.enabled, true);
 	assert.equal(entry.source, "dev");
 	assert.equal(probePlugin(), true);
 });
 
-test("pi-desktop: 卸载会删 registry 条目和插件目录，且不碰别人的插件", (t) => {
+test("pi-desktop: uninstall removes the registry entry and plugin directory without touching other plugins", (t) => {
 	const data = sandbox(t);
-	// 一个别人的插件目录 + 条目
+	// Another plugin directory and registry entry
 	const foreign = join(data, "plugins", "imported", "someone-else");
 	mkdirSync(foreign, { recursive: true });
 	writeFileSync(join(foreign, "manifest.json"), JSON.stringify({ id: "imported.someone-else" }));
@@ -59,21 +59,21 @@ test("pi-desktop: 卸载会删 registry 条目和插件目录，且不碰别人�
 	const left = registryOf(data);
 	assert.deepEqual(left.map((p) => p.id), ["imported.someone-else"]);
 	assert.equal(existsSync(pluginDir()), false);
-	assert.equal(existsSync(foreign), true, "别人的插件目录被误删");
+	assert.equal(existsSync(foreign), true, "Another plugin directory was incorrectly removed");
 	assert.equal(probePlugin(), false);
 });
 
-test("pi-desktop: 没有 registry 时明确报错，不静默装一半", (t) => {
+test("pi-desktop: missing registry produces an explicit error, not a silent partial install", (t) => {
 	const data = sandbox(t);
 	rmSync(join(data, "plugins", "registry.json"), { force: true });
 	const r = installPlugin("C:/ap-home");
-	assert.match(r.error ?? "", /registry|插件登记表/);
+	assert.match(r.error ?? "", /registry/);
 });
 
-// PI-Desktop 0.21 把 before_agent_start 的返回值按「会话中途 system 补丁」下发：不认补丁的模型
-// （实测 mercury-3）看不到变化，认补丁的（deepseek-v4.1-flash）能换。生成代码必须同时写
-// systemPromptOptions.forceSystemPrompt，走整份替换，才对所有模型生效。
-test("pi-desktop: 生成的扩展把新提示词同时写进 forceSystemPrompt（含 off 撤销）", async (t) => {
+// PI-Desktop 0.21 sends before_agent_start results as mid-session system patches: models that do not recognize the patch
+// (observed with mercury-3) see no change, while those that do (deepseek-v4.1-flash) can switch. Generated code must also set
+// systemPromptOptions.forceSystemPrompt for full replacement to work across models.
+test("pi-desktop: generated extension also writes the new prompt to forceSystemPrompt, including off cleanup", async (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-pidesk-ext-"));
 	const root = join(dir, "ap");
 	mkdirSync(join(root, "personas"), { recursive: true });
@@ -95,7 +95,7 @@ test("pi-desktop: 生成的扩展把新提示词同时写进 forceSystemPrompt�
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 
 	const source = extensionSource(root, "pi-desktop");
-	assert.match(source, /forceSystemPrompt = finalPrompt/, "生成代码里没有 forceSystemPrompt");
+	assert.match(source, /forceSystemPrompt = finalPrompt/, "Generated code lacks forceSystemPrompt");
 	const plugin = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
 	const hooks = {};
 	plugin.default({ on: (k, v) => (hooks[k] = v), registerCommand: () => {} });
@@ -104,10 +104,10 @@ test("pi-desktop: 生成的扩展把新提示词同时写进 forceSystemPrompt�
 	const event = { systemPrompt: "HOST PROMPT", systemPromptOptions: {} };
 	const out = await hooks.before_agent_start(event);
 	assert.match(String(out.systemPrompt), /ALPHA PERSONA/);
-	assert.equal(event.systemPromptOptions.forceSystemPrompt, out.systemPrompt, "forceSystemPrompt 与返回的 prompt 不一致");
+	assert.equal(event.systemPromptOptions.forceSystemPrompt, out.systemPrompt, "forceSystemPrompt differs from the returned prompt");
 
 	state(false);
 	const offEvent = { systemPrompt: "HOST PROMPT", systemPromptOptions: { forceSystemPrompt: "STALE" } };
 	await hooks.before_agent_start(offEvent);
-	assert.equal("forceSystemPrompt" in offEvent.systemPromptOptions, false, "off 后必须撤掉 forceSystemPrompt");
+	assert.equal("forceSystemPrompt" in offEvent.systemPromptOptions, false, "off must remove forceSystemPrompt");
 });

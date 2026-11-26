@@ -8,19 +8,19 @@ test("zcode: verify actual bundle and global AGENTS.md loader", () => {
 	const zcodeDir = "D:/zcode";
 	const glmCjs = join(zcodeDir, "resources/glm/zcode.cjs");
 	if (!existsSync(glmCjs)) {
-		// 环境中若未安装 ZCode 则跳过物理断言
+		// Skip physical assertions if ZCode is not installed in the environment
 		return;
 	}
 
 	const cjsCode = readFileSync(glmCjs, "utf8");
 
-	// 1. 验证内核中存在 ~/.zcode/AGENTS.md 加载逻辑
-	assert.ok(cjsCode.includes(".zcode\",\"AGENTS.md\""), "ZCode 内核包含 ~/.zcode/AGENTS.md 加载路径");
+	// 1. Verify the kernel contains logic to load ~/.zcode/AGENTS.md
+	assert.ok(cjsCode.includes(".zcode\",\"AGENTS.md\""), "ZCode kernel contains the ~/.zcode/AGENTS.md load path");
 
-	// 2. 验证 ContextBuilder 中存在 customSystemPrompt 逻辑
-	assert.ok(cjsCode.includes("customSystemPrompt"), "ZCode 内核包含 customSystemPrompt 属性");
-	assert.ok(cjsCode.includes("Custom System Prompt"), "ZCode 内核包含 Custom System Prompt 注入块");
+	// 2. Verify ContextBuilder contains customSystemPrompt logic
+	assert.ok(cjsCode.includes("customSystemPrompt"), "ZCode kernel contains the customSystemPrompt property");
+	assert.ok(cjsCode.includes("Custom System Prompt"), "ZCode kernel contains the Custom System Prompt injection block");
 
-	// 3. 验证存在 UserPromptSubmit Hook 拦截事件
-	assert.ok(cjsCode.includes("UserPromptSubmit"), "ZCode 内核包含 UserPromptSubmit Hook 事件");
+	// 3. Verify the UserPromptSubmit hook interception event exists
+	assert.ok(cjsCode.includes("UserPromptSubmit"), "ZCode kernel contains the UserPromptSubmit hook event");
 });
