@@ -878,9 +878,9 @@ function renderPersonas() {
   const list = state.personas.filter(p => `${p.id} ${personaName(p)} ${p.meta?.description || p.meta?.desc || ''}`.toLocaleLowerCase().includes(query));
   $('persona-list').replaceChildren(...(list.length ? list.map(p => node('button', {
     type: 'button', class: `persona-item ${editor === p.id ? 'selected' : ''}`, 'data-persona': p.id
-  }, node('strong', {}, personaName(p)), node('small', {}, pick(`${p.id} · ${fmt(p.chars)} 字`, `${p.id} · ${fmt(p.chars)} chars`)), state.active === p.id ? chip(pick('当前人设', 'Active'), '') : null)) : [empty(pick('没有匹配的人设', 'No matching personas'))]));
+  }, node('strong', {}, personaName(p)), node('small', {}, `${p.id} · ${fmt(p.chars)} chars`), state.active === p.id ? chip('Active', '') : null)) : [empty('No matching personas')]));
 }
-function confirmDiscard() { return !editorDirty() || window.confirm(pick('这份人设有未保存的修改，放弃吗？', 'Discard unsaved changes to this persona?')); }
+function confirmDiscard() { return !editorDirty() || window.confirm('Discard unsaved changes to this persona?'); }
 function openEditor(id) {
   if (!confirmDiscard()) return;
   editor = id || '';
@@ -899,7 +899,7 @@ function renderEditorStatus() {
   const current = editor === state.active;
   $('editor-title').textContent = editor ? (current ? t('library.editCurrentTitle') : t('library.editTitle')) : t('library.newTitle');
   $('editor-status').textContent = editorDirty() ? t('library.unsaved') : t('library.saved');
-  $('char-count').textContent = pick(`${$('edit-body').value.trim().length} 字`, `${$('edit-body').value.trim().length} chars`);
+  $('char-count').textContent = `${$('edit-body').value.trim().length} chars`;
   $('save-persona').textContent = current ? t('library.saveAndSync') : t('console.save');
   $('save-persona').disabled = busy || !editorDirty();
   $('save-apply').hidden = current;
@@ -907,19 +907,19 @@ function renderEditorStatus() {
   $('delete-persona').disabled = busy || !editor || state.personas.length <= 1;
   $('edit-id').disabled = busy || Boolean(editor);
   $('editor-hint').textContent = current
-    ? pick('保存后会同步到已接管的工具；暂停时只更新人设，不恢复应用。', 'Saving syncs to managed tools; while paused, only the persona is updated.')
-    : pick('「保存」只改人设库；「保存并应用」会切换当前人设并同步。', '"Save" updates the library only; "Save & Apply" switches the active persona and syncs.');
+    ? 'Saving syncs to managed tools; while paused, only the persona is updated.'
+    : '"Save" updates the library only; "Save & Apply" switches the active persona and syncs.';
 }
 async function saveEditor(apply) {
   if (!$('editor-form').reportValidity()) return;
   const value = editorValue();
-  if (!editor && state.personas.some(p => p.id === value.id)) { notify(pick('这个标识已经存在，换一个再试。', 'This ID already exists; choose another.'), 'error'); return; }
+  if (!editor && state.personas.some(p => p.id === value.id)) { notify('This ID already exists; choose another.', 'error'); return; }
   await operation(async () => {
     const result = await api('persona', { ...value, apply });
     editor = result.persona.id;
     editorBaseline = JSON.stringify(value);
     await refresh({ resetDraft: apply });
-    announce(result, apply ? pick('人设已保存并应用。', 'Persona saved and applied.') : pick('人设已保存。', 'Persona saved.'));
+    announce(result, apply ? 'Persona saved and applied.' : 'Persona saved.');
   });
 }
 
