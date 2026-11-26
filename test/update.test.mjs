@@ -81,11 +81,11 @@ test('executable replacement uses destination-volume staging and preserves the o
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });
 
-// —— 源码检出（git clone 后直接 node bin/...）：更新就是这个目录里的 git pull ——
-// 全用临时仓库跑，不碰真实安装目录；上游用一个裸仓库扮，避免任何外网访问。
+// —— Source checkout (run node bin/... after git clone): update means git pull in that directory ——
+// Use temporary repositories, never the real installation; a bare repository serves as upstream without external networking.
 function sh(cwd, ...args) {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
-  if (r.status !== 0) throw new Error(`git ${args.join(' ')} 失败：${r.stderr || r.stdout}`);
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr || r.stdout}`);
   return (r.stdout || '').trim();
 }
 test('git checkout is its own install type and pulls fast-forward only', () => {
@@ -98,14 +98,14 @@ test('git checkout is its own install type and pulls fast-forward only', () => {
     sh(work, 'add', '.'); sh(work, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'v1');
     sh(work, 'push', '-u', 'origin', 'main');
 
-    // 上游有新提交，本地还没拉
+    // Upstream has a new commit not yet pulled locally.
     sh(base, 'clone', bare, other);
     writeFileSync(join(other, 'b.txt'), 'v2\n');
     sh(other, 'add', '.'); sh(other, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'v2');
     sh(other, 'push', 'origin', 'main');
 
-    assert.equal(isGitCheckout(work), true, '工作副本认得出自己是 git 检出');
-    assert.equal(isGitCheckout(base), false, '不是仓库根的目录不能算检出');
+    assert.equal(isGitCheckout(work), true, 'Working copy recognizes itself as a git checkout');
+    assert.equal(isGitCheckout(base), false, 'A directory outside the repository root is not a checkout');
 
     const before = gitCheckoutState({ root: work });
     assert.equal(before.ok, true);
@@ -115,9 +115,9 @@ test('git checkout is its own install type and pulls fast-forward only', () => {
 
     const pulled = gitPullSelf({ root: work });
     assert.equal(pulled.ok, true);
-    assert.equal(pulled.changed, true, '落后时必须真的快进');
+    assert.equal(pulled.changed, true, 'Must actually fast-forward when behind');
     assert.notEqual(pulled.before, pulled.after);
-    assert.equal(existsSync(join(work, 'b.txt')), true, '新提交的文件落地');
+    assert.equal(existsSync(join(work, 'b.txt')), true, 'File from the new commit is present');
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
 test('git update refuses a dirty tree, a detached head and a missing upstream', () => {
@@ -130,19 +130,19 @@ test('git update refuses a dirty tree, a detached head and a missing upstream', 
     sh(work, 'add', '.'); sh(work, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'v1');
     sh(work, 'push', '-u', 'origin', 'main');
 
-    // uncommitted changes：必须拒绝，且不许自作主张 stash/copy
+    // uncommitted changes：Must refuse and never automatically stash or copy.
     writeFileSync(join(work, 'a.txt'), 'local edit\n');
     assert.equal(gitCheckoutState({ root: work }).dirty, 1);
     assert.throws(() => gitPullSelf({ root: work }), /uncommitted changes/);
-    assert.equal(readFileSync(join(work, 'a.txt'), 'utf8'), 'local edit\n', '本地改动保持原样');
+    assert.equal(readFileSync(join(work, 'a.txt'), 'utf8'), 'local edit\n', 'Local changes remain unchanged');
     sh(work, 'checkout', '--', 'a.txt');
 
-    // detached HEAD：没有分支名，不能猜
+    // detached HEAD：No branch name, so do not guess.
     sh(work, 'checkout', '--detach');
     assert.throws(() => gitPullSelf({ root: work }), /HEAD|[Nn]o upstream/);
     sh(work, 'checkout', 'main');
 
-    // [Nn]o upstream：明确拒绝，不能默认 origin/main
+    // [Nn]o upstream：Explicitly refuse rather than defaulting to origin/main.
     sh(base, 'init', '-b', 'main', solo);
     writeFileSync(join(solo, 'a.txt'), 'x\n');
     sh(solo, 'add', '.'); sh(solo, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'x');
@@ -151,7 +151,7 @@ test('git update refuses a dirty tree, a detached head and a missing upstream', 
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
 test('detectInstallType reports git for a source checkout and never for a compiled build', () => {
-  // 本测试就运行在源码检出里，所以必须报 git；编译态由 canReplaceSelf 分支在前面拦掉
+  // This test runs in a source checkout, so it must report git; the canReplaceSelf branch handles compiled mode earlier.
   assert.equal(isGitCheckout(), true);
   assert.equal(detectInstallType(), canReplaceSelf() ? 'exe' : 'git');
 });
@@ -162,12 +162,12 @@ test('a failed pull throws instead of reporting success with stderr as output', 
     sh(base, 'init', '-b', 'main', work);
     writeFileSync(join(work, 'a.txt'), 'v1\n');
     sh(work, 'add', '.'); sh(work, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'v1');
-    // 上游指向一个必定连不上的地址：git pull 非零退出，必须抛而不是返回 ok
+    // Point upstream to an unreachable address: nonzero git pull must throw, not return success.
     sh(work, 'remote', 'add', 'origin', 'https://127.0.0.1:1/nope.git');
-    // 直接写 config：上游分支在远端不存在时 --set-upstream-to 会拒绝，但线上配置就是这种形态
+    // Write config directly: --set-upstream-to refuses nonexistent remote branches, but real configurations can have this form.
     sh(work, 'config', 'branch.main.remote', 'origin');
     sh(work, 'config', 'branch.main.merge', 'refs/heads/main');
-    // 让 @{u} 能解析：远程跟踪引用手工造一个，这样才走到真正的 pull 失败
+    // Make @{u} resolve by creating a remote tracking ref manually, so the test reaches the actual pull failure.
     sh(work, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
     assert.throws(() => gitPullSelf({ root: work, timeout: 8000 }), /git pull failed/);
   } finally { rmSync(base, { recursive: true, force: true }); }
