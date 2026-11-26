@@ -23,34 +23,34 @@ const freshHome = name => {
 
 /* ── settings ─────────────────────────────────────────────────────────── */
 
-test('settings: 默认是「关窗退出 + 退出前确认」，密码只报 hasPassword', () => {
+test('settings: defaults to exit on close with confirmation; password exposes only hasPassword', () => {
 	const home = freshHome('defaults');
 	const view = settingsOf(loadState(home).state);
 	assert.deepEqual(view.desktop, { exitOnClose: true, confirmOnClose: true });
 	assert.equal(view.webdav.dir, 'agent-purge');
 	assert.equal(view.webdav.hasPassword, false);
-	assert.equal('password' in view.webdav, false, '密码绝不能出现在前端视图里');
+	assert.equal('password' in view.webdav, false, 'Password must never appear in the frontend view');
 	assert.equal(desktopExitOnClose(loadState(home).state), true);
 });
 
-test('settings: 保存只覆盖点名的键，密码不回显但能取到', () => {
+test('settings: Saving updates only named keys; password is retrievable but not echoed', () => {
 	const home = freshHome('save');
 	patchState(home, { piAuto: true });
 	saveSettings(home, { webdav: { url: ' https://dav.example.com/dav/ ', username: 'admin', password: 's3cret', dir: '/backups/agent-purge/' } });
 	saveSettings(home, { desktop: { exitOnClose: false } });
 
 	const { state } = loadState(home);
-	assert.equal(state.piAuto, true, '别的字段不能被顺手抹掉');
+	assert.equal(state.piAuto, true, 'Other fields must not be erased');
 	const view = settingsOf(state);
 	assert.equal(view.webdav.url, 'https://dav.example.com/dav/');
 	assert.equal(view.webdav.dir, 'backups/agent-purge');
 	assert.equal(view.webdav.hasPassword, true);
 	assert.equal(settingsWithSecret(state).webdav.password, 's3cret');
 	assert.equal(view.desktop.exitOnClose, false);
-	assert.equal(view.desktop.confirmOnClose, true, '没点名的键保持原值');
+	assert.equal(view.desktop.confirmOnClose, true, 'Unspecified keys retain their values');
 });
 
-test('settings: 空密码等于清除；地址与目录做基本校验；GitHub 镜像地址规范化与清除', () => {
+test('settings: Empty password clears it; validate URL and directory; normalize and clear GitHub mirror URL', () => {
 	const home = freshHome('clear');
 	saveSettings(home, { webdav: { url: 'https://dav.example.com', password: 'x' } });
 	assert.equal(settingsOf(loadState(home).state).webdav.hasPassword, true);
@@ -67,7 +67,7 @@ test('settings: 空密码等于清除；地址与目录做基本校验；GitHub 
 	assert.throws(() => saveSettings(home, { githubMirror: 'ftp://mirror.invalid' }), /http/);
 });
 
-test('settings: theme 默认 auto，支持切换并校验 light/dark/auto', () => {
+test('settings: theme defaults to auto and supports and validates light/dark/auto', () => {
 	const home = freshHome('theme');
 	assert.equal(settingsOf(loadState(home).state).theme, 'auto');
 	assert.equal(settingsOf({ settings: { theme: 'unexpected' } }).theme, 'auto');
@@ -75,7 +75,7 @@ test('settings: theme 默认 auto，支持切换并校验 light/dark/auto', () =
 	saveSettings(home, { theme: ' DARK ' });
 	assert.equal(settingsOf(loadState(home).state).theme, 'dark');
 	saveSettings(home, { desktop: { exitOnClose: false } });
-	assert.equal(settingsOf(loadState(home).state).theme, 'dark', '保存其他设置项不能抹掉 theme');
+	assert.equal(settingsOf(loadState(home).state).theme, 'dark', 'Saving other settings must not erase theme');
 
 	saveSettings(home, { theme: 'light' });
 	assert.equal(settingsOf(loadState(home).state).theme, 'light');
@@ -86,9 +86,9 @@ test('settings: theme 默认 auto，支持切换并校验 light/dark/auto', () =
 	assert.throws(() => saveSettings(home, { theme: 123 }), /string/);
 });
 
-/* ── WebDAV：用一个最小 WebDAV 服务端打真请求 ────────────────────────────── */
+/* ── WebDAV：Make real requests to a minimal WebDAV server ────────────────────────────── */
 
-/** 严格 WebDAV 桩：要求先逐层 MKCOL 建目录才允许 PUT，目录不在时 PROPFIND 返回 404（贴近真实服务端）。 */
+/** Strict WebDAV stub: requires MKCOL per directory before PUT; PROPFIND returns 404 for missing directories. */
 function davServer() {
 	const files = new Map();
 	const collections = new Set(['/dav/']);
@@ -142,43 +142,43 @@ function davServer() {
 	})));
 }
 
-test('webdav: 备份→下载→恢复走完一圈，密码不随备份出走', async () => {
+test('webdav: backup → download → restore round trip excludes the password', async () => {
 	const dav = await davServer();
 	try {
 		const home = freshHome('roundtrip');
 		saveSettings(home, { webdav: { url: dav.url, username: 'admin', password: 's3cret', dir: 'agent-purge' } });
 		const settings = settingsWithSecret(loadState(home).state);
 
-		// 首次配置：远端目录 agent-purge 还没建好时，测试连接也不能报 404
+		// Initial setup: testing connectivity must not report 404 when the remote agent-purge directory is absent.
 		const probed = await testConnection(settings);
 		assert.equal(probed.ok, true);
 		assert.equal(probed.willCreateDir, true);
 		assert.deepEqual(remoteUrl(settings.webdav, MANIFEST), `${dav.url}agent-purge/${MANIFEST}`);
 
 		const result = await backup(home, settings);
-		assert.equal(result.files, 2, '两个人设文件 + state.json 里 active.md 被排除 → alpha.md 与 state.json');
+		assert.equal(result.files, 2, 'Two persona files plus state.json, with active.md excluded, leaving alpha.md and state.json');
 		const archive = JSON.parse(dav.files.get(`/dav/agent-purge/${MANIFEST}`).toString('utf8'));
 		const stateEntry = archive.entries.find(e => e.path === 'state.json');
 		assert.equal(stateEntry.sha256, createHash('sha256').update(Buffer.from(stateEntry.base64, 'base64')).digest('hex'));
 		const uploadedState = JSON.parse(Buffer.from(stateEntry.base64, 'base64').toString('utf8'));
-		assert.equal(uploadedState.settings.webdav.password, undefined, '备份里不许有明文密码');
-		assert.equal(archive.entries.some(e => e.path === 'personas/active.md'), false, '派生物不进备份');
+		assert.equal(uploadedState.settings.webdav.password, undefined, 'Backups must not contain the plaintext password');
+		assert.equal(archive.entries.some(e => e.path === 'personas/active.md'), false, 'Derived files are excluded from backups');
 
-		// 改本地，再从远端恢复回来
+		// Change local data, then restore from remote.
 		writeFileSync(join(home, 'personas', 'alpha.md'), 'LOCAL_EDIT');
 		saveSettings(home, { desktop: { exitOnClose: false } });
 		const restored = await restore(home, settings);
 		assert.equal(restored.written.includes('personas/alpha.md'), true);
 		assert.equal(readFileSync(join(home, 'personas', 'alpha.md'), 'utf8'), '---\nid: alpha\nname: Alpha\n---\nPERSONA_ALPHA');
-		// 密码是「这台机器」的属性：备份里没有，恢复后本机仍要能继续用
+		// The password belongs to this machine: it is absent from backups and remains usable after restore.
 		assert.equal(settingsWithSecret(loadState(home).state).webdav.password, 's3cret');
-		assert.ok(restored.snapshot && readdirSync(join(home, 'backups')).length === 1, '恢复前要留本地快照');
+		assert.ok(restored.snapshot && readdirSync(join(home, 'backups')).length === 1, 'A local snapshot must be kept before restore');
 	} finally {
 		await new Promise(r => dav.server.close(r));
 	}
 });
 
-test('webdav: 认证失败、找不到备份、哈希不符都要说人话且不写盘', async () => {
+test('webdav: authentication failure, missing backup and hash mismatch must give readable errors without writing', async () => {
 	const dav = await davServer();
 	try {
 		const home = freshHome('errors');
@@ -189,7 +189,7 @@ test('webdav: 认证失败、找不到备份、哈希不符都要说人话且不
 		const settings = settingsWithSecret({ settings: { webdav: { url: dav.url, username: 'admin', password: 's3cret', dir: 'agent-purge' } } });
 		await assert.rejects(download(settings), /No agent-purge backup found/);
 
-		// 篡改一个字节 → 校验失败，本地文件保持原样
+		// Alter one byte → verification fails and local files remain unchanged.
 		await backup(home, settings);
 		const archive = JSON.parse(dav.files.get(`/dav/agent-purge/${MANIFEST}`).toString('utf8'));
 		archive.entries[0].base64 = Buffer.from('TAMPERED').toString('base64');
@@ -202,7 +202,7 @@ test('webdav: 认证失败、找不到备份、哈希不符都要说人话且不
 	}
 });
 
-test('webdav: 备份里的路径必须落在人设与配置文件范围内', () => {
+test('webdav: backup paths must stay within the persona and configuration file scope', () => {
 	const home = freshHome('paths');
 	const malicious = {
 		archive: { format: 1, createdAt: '2026-01-01T00:00:00.000Z' },
@@ -211,7 +211,7 @@ test('webdav: 备份里的路径必须落在人设与配置文件范围内', () 
 	assert.throws(() => applyArchive(home, malicious, { snapshotBefore: false }), /Unrecognized path/);
 });
 
-test('webdav: 快照只保留最近若干份', () => {
+test('webdav: retain only recent snapshots', () => {
 	const home = freshHome('prune');
 	const dir = join(home, 'backups');
 	mkdirSync(dir, { recursive: true });
@@ -220,7 +220,7 @@ test('webdav: 快照只保留最近若干份', () => {
 	assert.equal(readdirSync(dir).length, 10);
 });
 
-test('webdav: 嵌套目录与 history 子目录按层 MKCOL，不把 dir 拼两遍', async () => {
+test('webdav: use MKCOL per nested directory and history without duplicating dir', async () => {
 	const dav = await davServer();
 	try {
 		const home = freshHome('nested-mkcol');
@@ -233,7 +233,7 @@ test('webdav: 嵌套目录与 history 子目录按层 MKCOL，不把 dir 拼两�
 		assert.ok(dav.seen.includes('MKCOL /dav/team/'));
 		assert.ok(dav.seen.includes('MKCOL /dav/team/agent-purge/'));
 		assert.ok(dav.seen.includes('MKCOL /dav/team/agent-purge/history/'));
-		assert.equal(dav.seen.some(line => line.includes('MKCOL /dav/team/agent-purge/team/')), false, 'MKCOL 绝不能把目录名拼两遍');
+		assert.equal(dav.seen.some(line => line.includes('MKCOL /dav/team/agent-purge/team/')), false, 'MKCOL must not duplicate the directory name');
 	} finally {
 		await new Promise(r => dav.server.close(r));
 	}
