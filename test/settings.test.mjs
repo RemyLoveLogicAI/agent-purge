@@ -187,7 +187,7 @@ test('webdav: 认证失败、找不到备份、哈希不符都要说人话且不
 		await assert.rejects(download(wrong), /401\/403/);
 
 		const settings = settingsWithSecret({ settings: { webdav: { url: dav.url, username: 'admin', password: 's3cret', dir: 'agent-purge' } } });
-		await assert.rejects(download(settings), /没有找到 agent-purge 备份/);
+		await assert.rejects(download(settings), /No agent-purge backup found/);
 
 		// 篡改一个字节 → 校验失败，本地文件保持原样
 		await backup(home, settings);
@@ -195,7 +195,7 @@ test('webdav: 认证失败、找不到备份、哈希不符都要说人话且不
 		archive.entries[0].base64 = Buffer.from('TAMPERED').toString('base64');
 		dav.files.set(`/dav/agent-purge/${MANIFEST}`, Buffer.from(JSON.stringify(archive)));
 		const before = readFileSync(join(home, 'personas', archive.entries[0].path.split('/')[1]), 'utf8');
-		await assert.rejects(restore(home, settings), /校验失败/);
+		await assert.rejects(restore(home, settings), /verification failed/);
 		assert.equal(readFileSync(join(home, 'personas', archive.entries[0].path.split('/')[1]), 'utf8'), before);
 	} finally {
 		await new Promise(r => dav.server.close(r));
@@ -208,7 +208,7 @@ test('webdav: 备份里的路径必须落在人设与配置文件范围内', () 
 		archive: { format: 1, createdAt: '2026-01-01T00:00:00.000Z' },
 		entries: [{ path: '../../evil.md', bytes: Buffer.from('x') }],
 	};
-	assert.throws(() => applyArchive(home, malicious, { snapshotBefore: false }), /不认识的路径/);
+	assert.throws(() => applyArchive(home, malicious, { snapshotBefore: false }), /Unrecognized path/);
 });
 
 test('webdav: 快照只保留最近若干份', () => {
