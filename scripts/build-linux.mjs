@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// 在 Linux 上生成单文件二进制、tar.gz 便携包、.deb 与（可选）.AppImage。
-// 交叉架构（x64 / arm64）由 Bun 直接产出；本机架构会真实跑一次 smoke 验收。
+// Build a single-file binary, tar.gz portable package, .deb, and optional .AppImage on Linux.
+// Bun builds cross-architecture artifacts (x64 / arm64); the native architecture receives a real smoke test.
 import { spawnSync } from 'node:child_process';
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,7 @@ import { hashFile, listFiles, readJSON } from './build-common.mjs';
 import { smoke } from './build-smoke.mjs';
 
 if (process.platform !== 'linux') {
-  throw new Error('构建 Linux 产物需要 Linux 环境（Windows/macOS 可通过 GitHub Actions release.yml 的 build_linux job 构建）。');
+  throw new Error('Building Linux artifacts requires Linux (on Windows/macOS use the build_linux job in GitHub Actions release.yml).');
 }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,7 +23,7 @@ const maintainer = process.env.AGENT_PURGE_MAINTAINER || 'ZiChuanLan <ZiChuanLan
 const homepage = (pkg.homepage || 'https://github.com/ZiChuanLan/agent-purge').replace(/#readme$/, '');
 
 const bun = captureBin('bun', ['--version']);
-if (!bun) throw new Error('构建 Linux 产物需要 Bun，请先安装 Bun');
+if (!bun) throw new Error('Bun is required to build Linux artifacts; install Bun first');
 
 const assets = [
   'matrix.json', 'package.json', 'lib/evidence.mjs',
@@ -32,12 +32,12 @@ const assets = [
   ...listFiles(join(ROOT, 'lib/templates/personas')).map(file => `lib/templates/personas/${file}`),
 ];
 const duplicates = assets.map(file => file.split('/').pop()).filter((file, index, all) => all.indexOf(file) !== index);
-if (duplicates.length) throw new Error('内嵌资源重名：' + duplicates.join(', '));
+if (duplicates.length) throw new Error('Duplicate embedded resource names: ' + duplicates.join(', '));
 
 const run = (cmd, args, label, options = {}) => {
   const res = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: 'inherit', ...options });
-  if (res.error) throw new Error(`${label} 失败：${res.error.message}`);
-  if (res.status !== 0) throw new Error(`${label} 失败（exit ${res.status ?? 'null'}）`);
+  if (res.error) throw new Error(`${label} failed: ${res.error.message}`);
+  if (res.status !== 0) throw new Error(`${label} failed (exit ${res.status ?? 'null'})`);
   return res;
 };
 const hasCommand = (cmd) => spawnSync('which', [cmd], { encoding: 'utf8', windowsHide: true }).status === 0;
@@ -59,7 +59,7 @@ StartupWMClass=agent-purge
 `;
 
 const installScript = `#!/bin/sh
-# 将 agent-purge 安装到当前用户目录（无需 root）：~/.local/bin + 桌面入口。
+# Install agent-purge in the current user directory (no root): ~/.local/bin and a desktop entry.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 BIN="\${HOME}/.local/bin"
@@ -70,8 +70,8 @@ install -m 0755 "$HERE/agent-purge" "$BIN/agent-purge"
 install -m 0644 "$HERE/agent-purge.png" "$ICONS/agent-purge.png"
 install -m 0644 "$HERE/agent-purge.desktop" "$APPS/agent-purge.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS" || true
-echo "已安装：$BIN/agent-purge"
-echo "启动：agent-purge web"
+echo "Installed: $BIN/agent-purge"
+echo "Launch: agent-purge web"
 `;
 
 const debControl = (arch) => `Package: agent-purge
@@ -104,7 +104,7 @@ const arches = onlyNative ? [process.arch] : ['x64', 'arm64'];
 
 mkdirSync(DIST, { recursive: true });
 const buildTemp = mkdtempSync(join(tmpdir(), 'ap-linux-'));
-console.log(`Bun ${bun.trim()} -> Linux 产物（${arches.join(', ')}）`);
+console.log(`Bun ${bun.trim()} -> Linux artifacts (${arches.join(', ')})`);
 
 const artifacts = {};
 try {
@@ -129,7 +129,7 @@ try {
       child.once('error', reject);
       child.once('close', resolveCode);
     });
-    if (code !== 0 || !existsSync(binPath)) throw new Error(`bun build --compile (${target}) 失败`);
+    if (code !== 0 || !existsSync(binPath)) throw new Error(`bun build --compile (${target}) failed`);
     chmodSync(binPath, 0o755);
     artifacts[`agent-purge-${version}-linux-${arch}`] = hashFile(binPath);
 
@@ -137,7 +137,7 @@ try {
       await smoke(binPath, [], { cwd: buildTemp, version, serve: serveCheck });
     }
 
-    // 便携包：解包即用，附 install.sh 可无 root 装进 ~/.local
+    // Portable package: unpack and run; install.sh installs into ~/.local without root.
     const stage = join(buildTemp, `stage-${arch}`, `agent-purge-${version}-linux-${arch}`);
     mkdirSync(stage, { recursive: true });
     copyFileSync(binPath, join(stage, 'agent-purge'));
@@ -148,7 +148,7 @@ try {
     writeFileSync(join(stage, 'agent-purge.desktop'), desktopEntry);
     writeFileSync(join(stage, 'install.sh'), installScript);
     chmodSync(join(stage, 'install.sh'), 0o755);
-    // 不在 Windows 挂载盘上构建时权限也是确定的：显式归一化，避免继承宿主 0666/0777。
+    // Normalize permissions explicitly rather than inheriting host 0666/0777, including builds outside Windows mounted drives.
     for (const name of ['agent-purge.png', 'LICENSE', 'README.md', 'agent-purge.desktop']) chmodSync(join(stage, name), 0o644);
 
     const tarball = join(DIST, `agent-purge-${version}-linux-${arch}.tar.gz`);
@@ -157,14 +157,14 @@ try {
     run('tar', ['-czf', tarball, '-C', dirname(stage), folder], `tar ${arch}`);
     const list = spawnSync('tar', ['-tzf', tarball], { encoding: 'utf8', windowsHide: true });
     for (const entry of ['agent-purge', 'install.sh', 'LICENSE', 'README.md', 'agent-purge.desktop', 'agent-purge.png']) {
-      if (!list.stdout.includes(`${folder}/${entry}`)) throw new Error(`便携包缺少 ${entry}（${arch}）`);
+      if (!list.stdout.includes(`${folder}/${entry}`)) throw new Error(`Portable package is missing ${entry} (${arch})`);
     }
     artifacts[`agent-purge-${version}-linux-${arch}.tar.gz`] = hashFile(tarball);
-    console.log(`便携包：${tarball} (${(statSync(tarball).size / 1048576).toFixed(1)} MB)`);
+    console.log(`Portable package: ${tarball} (${(statSync(tarball).size / 1048576).toFixed(1)} MB)`);
 
     if (wantDeb) {
       if (!hasCommand('dpkg-deb')) {
-        console.log('  跳过 .deb：未找到 dpkg-deb（Debian/Ubuntu 可用 apt install dpkg 安装）');
+        console.log('  Skipping .deb: dpkg-deb not found (on Debian/Ubuntu install it with apt install dpkg)');
       } else {
         const debRoot = join(buildTemp, `deb-${arch}`);
         mkdirSync(join(debRoot, 'DEBIAN'), { recursive: true });
@@ -206,20 +206,20 @@ License: MIT
         run('dpkg-deb', ['--build', '--root-owner-group', debRoot, deb], `dpkg-deb ${arch}`);
         const info = spawnSync('dpkg-deb', ['-f', deb, 'Package', 'Version', 'Architecture'], { encoding: 'utf8', windowsHide: true });
         if (info.status !== 0 || !info.stdout.includes(version) || !info.stdout.includes(DEB_ARCH[arch])) {
-          throw new Error(`.deb 元数据校验失败（${arch}）：${info.stderr || info.stdout}`);
+          throw new Error(`.deb metadata verification failed (${arch}): ${info.stderr || info.stdout}`);
         }
         const contents = spawnSync('dpkg-deb', ['-c', deb], { encoding: 'utf8', windowsHide: true });
         if (!contents.stdout.includes('./opt/agent-purge/agent-purge') || !contents.stdout.includes('./usr/bin/agent-purge')) {
-          throw new Error(`.deb 文件清单缺少入口（${arch}）`);
+          throw new Error(`.deb file list is missing an entry (${arch})`);
         }
         artifacts[`agent-purge-${version}-linux-${arch}.deb`] = hashFile(deb);
-        console.log(`Debian 包：${deb} (${(statSync(deb).size / 1048576).toFixed(1)} MB)`);
+        console.log(`Debian package: ${deb} (${(statSync(deb).size / 1048576).toFixed(1)} MB)`);
       }
     }
 
     if (wantAppImage) {
       if (!hasCommand('appimagetool')) {
-        console.log('  跳过 .AppImage：未找到 appimagetool（可从 AppImageKit releases 获取后放入 PATH）');
+        console.log('  Skipping .AppImage: appimagetool not found (obtain it from AppImageKit releases and add it to PATH)');
       } else {
         const appDir = join(buildTemp, `AppDir-${arch}`);
         mkdirSync(join(appDir, 'usr', 'bin'), { recursive: true });
@@ -246,7 +246,7 @@ License: MIT
           const probeRun = spawnSync(image, ['--help'], { cwd: probeRoot, encoding: 'utf8', windowsHide: true, timeout: 60000,
             env: { ...isolatedEnv(probeRoot), APPIMAGE_EXTRACT_AND_RUN: '1' } });
           if (probeRun.status !== 0)
-            throw new Error(`AppImage 原生自检失败（${arch}, exit ${probeRun.status ?? 'null'}）：${probeRun.error?.message || probeRun.stderr}`);
+            throw new Error(`AppImage native self-check failed (${arch}, exit ${probeRun.status ?? 'null'}): ${probeRun.error?.message || probeRun.stderr}`);
         }
         artifacts[`agent-purge-${version}-linux-${arch}.AppImage`] = hashFile(image);
         console.log(`AppImage：${image} (${(statSync(image).size / 1048576).toFixed(1)} MB)`);
@@ -256,7 +256,7 @@ License: MIT
 
   const manifest = { schema: 1, flavor: 'linux', version, platform: process.platform, arch: process.arch, files: artifacts };
   writeFileSync(join(DIST, 'linux-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log(`清单：${join(DIST, 'linux-manifest.json')}（${Object.keys(artifacts).length} 个产物）`);
+  console.log(`Manifest: ${join(DIST, 'linux-manifest.json')}(${Object.keys(artifacts).length} artifacts)`);
 } finally {
   rmSync(ENTRY, { force: true });
   rmSync(buildTemp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
