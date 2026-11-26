@@ -3,52 +3,52 @@ layout: home
 
 hero:
   name: agent-purge
-  text: 一份人设，统一接管本机多个 coding agent
-  tagline: 本地提示词与人设编排控制台 · 零生产依赖 · 每次写入都可逐位还原
+  text: One persona for multiple local coding agents
+  tagline: Local prompt and persona orchestration · zero production dependencies · byte-reversible writes
   image:
     src: /logo.svg
     alt: agent-purge
   actions:
     - theme: brand
-      text: 快速开始
+      text: Get started
       link: /guide/getting-started
     - theme: alt
-      text: 支持情况
+      text: Support matrix
       link: /reference/support
     - theme: alt
       text: GitHub
       link: https://github.com/ZiChuanLan/agent-purge
 
 features:
-  - title: 一份人设，多端入口
-    details: CLI 与 Web 共用同一份人设库与账本，支持单次启动、常驻配置、会话内 <code>/purge</code> 热切与按目录写入项目规则。
-  - title: 能力诚实、分家自治
-    details: 默认跟随全局人设与改写力度，也可按工具单独覆写；界面严格按各家实测支持度展示可用通道与力度，不摆假开关。
-  - title: 支持热切，也明示边界
-    details: Pi / omp / OpenCode / dsh 等具备每轮回调的动态通道下一轮即生效；静态配置或启动参数入口明示需新开会话。
-  - title: 原子可逆
-    details: 每次写入前保留原字节 <code>stash</code> 快照，关闭即逐位还原；项目规则支持 diff 预览与 SHA 冲突检测。
-  - title: 零生产依赖、本地优先
-    details: 无外部后端、不上传配置，数据保存在独立目录（默认 <code>~/.agent-purge/</code>），升级不覆盖用户人设。
-  - title: 实测数据可查
-    details: 每个宿主的净化效果、内置安全条款、残留说明都有隔离 HOME 真实抓包佐证，测试会拦住与实测矛盾的数字。
+  - title: One persona, many entry points
+    details: CLI and Web share a persona library and ledger, supporting one-time launches, persistent configuration, in-session <code>/purge</code> hot switching, and project rules by directory.
+  - title: Clear capabilities, independent overrides
+    details: Tools follow the global persona and rewriting mode by default but can be overridden individually. The interface shows only measured channels and modes, without fake switches.
+  - title: Hot switching with clear limits
+    details: Dynamic channels with per-turn callbacks, including Pi, omp, OpenCode, and dsh, apply changes on the next turn. Static configuration and launch arguments require a new session.
+  - title: Atomic and reversible
+    details: Original bytes are saved in a <code>stash</code> snapshot before each write and restored when disabled. Project rules support diff preview and SHA conflict detection.
+  - title: Local-first, zero production dependencies
+    details: No external backend or configuration uploads. Data lives in a separate directory (default <code>~/.agent-purge/</code>) and upgrades do not overwrite user personas.
+  - title: Measurements available
+    details: Isolated-HOME request captures support each host's purge effects, built-in safety clauses, and residual text. Tests reject numbers that contradict measurements.
 ---
 
-## 它解决什么问题
+## The problem
 
-各家 coding agent 都自带一份系统提示词：产品身份、行为规范、拒答条款、工具说明。你想用自己的方式跟它协作，就得反复改各家互不兼容的配置——而且改坏了很难退回。
+Coding agents ship system prompts containing product identity, behavioral rules, refusal clauses, and tool instructions. Working your way can require repeatedly editing incompatible configurations, and mistakes can be hard to undo.
 
-agent-purge 把这些入口收成一处：**同一份人设，注入到你指定的宿主；同一条命令，随时撤回原样。**
+agent-purge brings those entry points together: **inject one persona into chosen hosts, and restore their originals with one command.**
 
-## 两种用法
+## Two ways to use it
 
 ::: code-group
 
-```bash [图形控制台]
+```bash [Console]
 agent-purge web
 ```
 
-```bash [命令行]
+```bash [Command line]
 agent-purge codex --mode replace
 agent-purge use concise
 agent-purge arm pi --slash
@@ -56,20 +56,20 @@ agent-purge arm pi --slash
 
 :::
 
-## 先看实测，再看宣传
+## Read the measurements first
 
-不同宿主的净化能力差别很大，这个项目选择把差别写清楚：
+Purge capabilities differ substantially by host. The project documents those differences:
 
-- **真替换**：Codex、OpenCode、DSH、Claude、Qwen、Qoder、Kimi、Kiro、CodeBuddy、Grok、omp —— 宿主提供整段 system prompt 入口，人设直接顶掉原生提示词。WorkBuddy 5.11.3 的入口在插件缓存（`~/.workbuddy/plugins/cache/workbuddy-builtin/` 的 `welcomemode-*/prompt.tpl` 与 `interactionmode-*/fragments/*.md`），安装目录 `resources/templates/` 的主提示词模板桌面端不读。
-- **部分替换**：Claude（残留 62 字身份句）、Kilo（`soul()` 前置身份）。
-- **只能追加**：Antigravity、Crush、Continue、Auggie、Goose、zcode —— 宿主没有整段入口，原生身份仍在提示词里。
+- **Full replacement**: Codex, OpenCode, DSH, Claude, Qwen, Qoder, Kimi, Kiro, CodeBuddy, Grok, and omp expose a full system-prompt entry point, allowing the persona to replace the native prompt. WorkBuddy 5.11.3 uses plugin cache entry points (`welcomemode-*/prompt.tpl` and `interactionmode-*/fragments/*.md` under `~/.workbuddy/plugins/cache/workbuddy-builtin/`); the desktop app does not read the main prompt template under the installation directory's `resources/templates/`.
+- **Partial replacement**: Claude retains a 62-character identity sentence; Kilo prepends an identity through `soul()`.
+- **Append only**: Antigravity, Crush, Continue, Auggie, Goose, and zcode do not expose a full replacement entry point, so the native identity remains in the prompt.
 
-逐家判定依据、实测字数与内置安全条款数据见 [支持情况](/reference/support) 与 [兼容性与已知限制](/reference/compatibility)。
+See the [support matrix](/reference/support) and [compatibility and known limits](/reference/compatibility) for per-host evidence, measured lengths, and built-in safety clause data.
 
-## 界面一览
+## Interface
 
-![agent-purge 控制台总览](/images/console-desktop.png)
+![agent-purge console overview](/images/console-desktop.png)
 
-系统提示词接管在「控制台」；项目目录及各家全局规则文件统一在「规则文件」页按作用范围与指定人设写入。
+System-prompt takeover is managed in the Console. Project directories and per-tool global rule files are written from the Rule Files page by scope and selected persona.
 
-![agent-purge 规则文件](/images/project-rules.png)
+![agent-purge rule files](/images/project-rules.png)
