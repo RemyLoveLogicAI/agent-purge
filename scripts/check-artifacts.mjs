@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { smoke } from './build-smoke.mjs';
 import { hashFile, readJSON } from './build-common.mjs';
 
-if (process.platform !== 'win32') throw new Error('Windows ZIP/EXE 验收需要 Windows');
+if (process.platform !== 'win32') throw new Error('Windows ZIP/EXE verification requires Windows');
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(source, 'dist'), version = readJSON(join(source, 'package.json')).version;
 const root = mkdtempSync(join(tmpdir(), 'ap-artifacts-'));

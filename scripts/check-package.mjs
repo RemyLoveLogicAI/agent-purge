@@ -31,7 +31,7 @@ try {
   npm(['install', '--prefix', prefix, '--ignore-scripts', '--no-audit', '--no-fund', '--offline', join(output, packed.filename)], sandbox);
   const installed = join(prefix, 'node_modules', 'agent-purge');
   assert.equal(JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8')).version, packed.version);
-  assert.deepEqual(checkDocumentationLinks(names, installed), [], '实际安装包里的文档链接必须可用');
+  assert.deepEqual(checkDocumentationLinks(names, installed), [], 'Documentation links in the installed package must work');
   await smoke(process.execPath, [join(installed, 'bin', 'agent-purge.mjs')], { cwd: prefix, version: packed.version });
   console.log(`npm tarball installed offline and verified: ${packed.filename}`);
 } finally { rmSync(sandbox, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
