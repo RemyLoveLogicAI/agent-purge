@@ -1,13 +1,13 @@
-# 暂停与卸载
+# Pause and uninstall
 
-## 暂停还是撤销
+## Pause or undo changes
 
-| 目的 | 命令 | 用户人设 |
+| Purpose | Command | User personas |
 |---|---|---|
-| 临时暂停 / 恢复原范围 | `agent-purge pause` / `agent-purge resume` | 保留 |
-| 仅撤销一家常驻配置 | `agent-purge uninstall dsh` | 保留，其他通道不变 |
-| 撤销一家全部已选通道 | `agent-purge disarm dsh` | 保留 |
-| 撤销所有登记的接管 | `agent-purge clean` | 保留 |
+| Temporarily pause / resume the previous scope | `agent-purge pause` / `agent-purge resume` | Retained |
+| Undo one persistent configuration only | `agent-purge uninstall dsh` | Retained; other channels unchanged |
+| Undo all selected channels for one harness | `agent-purge disarm dsh` | Retained |
+| Undo all registered takeovers | `agent-purge clean` | Retained |
 
 ```bash
 agent-purge pause
@@ -16,24 +16,24 @@ agent-purge disarm dsh
 agent-purge clean
 ```
 
-## 卸载程序
+## Uninstall the program
 
-卸载 npm 程序时，先撤销接管，再移除程序：
+When uninstalling the npm program, undo takeovers before removing it:
 
 ```bash
 agent-purge clean
 npm uninstall -g agent-purge
 ```
 
-Windows 安装器卸载也会先撤销接管并保留人设。发生恢复冲突时，保留报错指出的文件和凭据，先比较修改再处理；**不要直接删除备份**。历史会话中已经发送的内容无法撤回。
+The Windows installer uninstaller also undoes takeovers and retains personas. If a restore conflict occurs, keep the files and credentials named in the error and compare changes before proceeding; **do not simply delete the backup**. Content already sent in past sessions cannot be recalled.
 
-## 永久删除数据
+## Permanently delete data
 
-需要永久删除数据时，先备份，再按[命令行参考的卸载章节](/reference/cli#暂停撤销和卸载)操作；`self-uninstall --yes` 与普通卸载不同。
+To permanently delete data, back up first, then follow the [uninstall section of the CLI reference](/reference/cli#暂停撤销和卸载). `self-uninstall --yes` is different from a normal uninstall.
 
-## 隐私边界
+## Privacy boundaries
 
-- **本机管理**：默认数据目录为 `~/.agent-purge/`；Windows 对应 `C:\Users\<用户>\.agent-purge\`。可通过 `AGENT_PURGE_HOME` 调整，程序升级不会覆盖这份目录。
-- **模型请求仍会联网**：启用后，人设会随宿主请求发送给其配置的模型服务；本地管理不等于离线运行。更新检查也会访问 GitHub。
-- **不直接修改宿主权限**：项目管理提示词和配置入口，不破解宿主、不绕过授权；不保证改写后的模型行为。
-- **只在有权管理的环境使用**：Web 仅监听 `127.0.0.1`，不要直接暴露到公网。完整要求见[合规声明](/LEGAL)。
+- **Local management**: The default data directory is `~/.agent-purge/`, or the corresponding `.agent-purge` directory under the Windows user profile. Override it with `AGENT_PURGE_HOME`. Program upgrades do not overwrite this directory.
+- **Model requests still use the network**: Once enabled, personas are sent with host requests to the configured model service. Local management does not mean offline operation. Update checks also contact GitHub.
+- **Host permissions are not directly changed**: The project manages prompts and configuration entry points; it does not crack hosts or bypass authorization, and does not guarantee model behavior after rewriting.
+- **Use only in environments you are authorized to manage**: The Web console listens only on `127.0.0.1`; do not expose it directly to the public internet. See the [compliance statement](/LEGAL) for the full requirements.
