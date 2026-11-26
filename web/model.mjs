@@ -1,4 +1,4 @@
-import { getLocale, listJoin, pick } from './i18n.mjs';
+import { getLocale, listJoin } from './i18n.mjs';
 
 const MODE_LABELS_BY_LOCALE = {
 	en: { strict: 'Persona Only', replace: 'Replace Identity', append: 'Append', off: 'Paused' },
@@ -51,11 +51,7 @@ export function modeAvailability(harness, locale = getLocale()) {
 		limited: Boolean(declared),
 		preferred: harness?.preferredMode ?? null,
 		note: harness?.modesNote ?? (declared
-			? pick(
-				`这家只支持：${declared.map(m => labels[m] || m).join(' / ')}`,
-				`Supports only: ${declared.map(m => labels[m] || m).join(' / ')}`,
-				locale,
-			)
+			? `Supports only: ${declared.map(m => labels[m] || m).join(' / ')}`
 			: null),
 		purgeKind: harness?.purgeKind ?? 'replace',
 		purgeNote: purgeNoteOf(harness, locale),
@@ -295,89 +291,63 @@ export const HARNESS_PURGE_EFFECTS = new Proxy({}, {
 });
 
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-export const personaName = (persona, locale = getLocale()) => persona?.meta?.name || persona?.id || pick('未选择', 'None selected', locale);
+export const personaName = (persona, locale = getLocale()) => persona?.meta?.name || persona?.id || 'None selected';
 export function configurationOf(state) {
 	return { persona: state.active ?? '', mode: state.paused ? state.prevMode || 'replace' : state.defaults?.mode || 'replace' };
 }
 export const changed = (draft, base) => JSON.stringify(draft) !== JSON.stringify(base);
 export const needsApply = (state, draft, base) => state.defaultsSet === false || changed(draft, base);
-/** 「装没装」只看程序本体：命令、安装目录（含 macOS 的 .app），或配置根在且不是「只剩残留」。
- *  只有配置目录（CLI 卸载后留下的 config.toml、别的工具写进去的 skills）不算装上——
- *  否则未安装的家会被画成「可接管」，开关点开也写不进任何地方。 */
+/** Installation requires a binary, application directory, or non-residual configuration root. A leftover config alone does not count. */
 export const installedOf = harness => Boolean(harness?.bin || harness?.install || ((harness?.found || harness?.homeExists) && !harness?.residueOnly));
 
-/** 这家被单独关掉（不是全局暂停）：界面要把「已关闭」和「可接管」分开画。 */
+/** Per-tool disablement is distinct from global pause and availability. */
 export const disabledOf = harness => ['harness-disabled', 'harness-off'].includes(harness?.activation?.blockedBy);
 export function sortedHarnesses(state, showAll = false) {
 	const selected = h => (h.armed ?? []).some(c => c !== 'project');
 	return [...(state.harnesses ?? [])]
 		.filter(h => h.caps?.injectable !== false)
-		// planned 的家（kiro / goose）本机没装也要列出来：用户需要知道「未来会支持」。
+		// Keep planned hosts visible even when not installed.
 		.filter(h => showAll || selected(h) || h.found || h.homeExists || h.planned)
 		.sort((a, b) => Number(selected(b)) - Number(selected(a)) || Number(b.found) - Number(a.found) || a.id.localeCompare(b.id));
 }
 
 export function effectLabel(harness, paused = false, dshRuntime = null, locale = getLocale()) {
-	const name = harnessTitle(harness.id ?? pick('这个执行器', 'this target', locale), locale);
+	const name = harnessTitle(harness.id ?? 'this target', locale);
 	const on = (harness.armed ?? []).some(c => c !== 'project');
-	if (on && paused) return pick('总电源已暂停：配置留着，恢复后按原范围应用', 'Global pause active: config kept and will apply on resume', locale);
+	if (on && paused) return 'Global pause active: config kept and will apply on resume';
 	if (on && (harness.mode === 'off' || ['harness-off', 'harness-disabled'].includes(harness.activation?.blockedBy))) {
-		return pick('这家已关闭：恢复全部也不会自动启用', 'Disabled for this tool: resuming all will not re-enable it', locale);
+		return 'Disabled for this tool: resuming all will not re-enable it';
 	}
 	if (!on) {
 		return harness.found || harness.homeExists
 			? ''
-			: pick('本机没装，装好后再回来开', 'Not installed locally; install first to enable', locale);
+			: 'Not installed locally; install first to enable';
 	}
 	if (harness.id === 'dsh' && dshRuntime) {
 		const states = Object.entries(dshRuntime).filter(([, v]) => v && typeof v === 'object');
 		const off = states.filter(([, v]) => v.enabled === false);
 		const profiles = harness.profiles || ['desktop', 'web', 'headless', 'sdk'];
 		if (profiles.length && profiles.every(p => dshRuntime[p]?.enabled === false)) {
-			return pick('dsh 已选形态均被 /purge off 暂停；在对应形态执行 /purge on 恢复', 'All selected dsh profiles are paused by /purge off; run /purge on to resume', locale);
+			return 'All selected dsh profiles are paused by /purge off; run /purge on to resume';
 		}
 		if (off.length) {
-			return pick(
-				`dsh 这些形态被 /purge off 暂停：${off.map(([p]) => p).join('、')}；未列出的形态尚未确认`,
-				`dsh profiles paused by /purge off: ${off.map(([p]) => p).join(', ')}; unlisted profiles unconfirmed`,
-				locale,
-			);
+			return `dsh profiles paused by /purge off: ${off.map(([p]) => p).join(', ')}; unlisted profiles unconfirmed`;
 		}
 	}
 	const dynamic = harness.caps?.hot;
 	if (dynamic?.ok && harness.armed.includes(dynamic.needs)) {
 		if (dynamic.needs === 'slash' && harness.auto !== true) {
-			return pick(
-				`扩展已安装：重新加载 ${name} 后执行 /purge on 生效；当前会话还没确认`,
-				`Extension installed: reload ${name} and run /purge on to activate; current session unconfirmed`,
-				locale,
-			);
+			return `Extension installed: reload ${name} and run /purge on to activate; current session unconfirmed`;
 		}
-		return pick(
-			'插件已加载：下一轮读取；首次安装或更新代码后要重启；当前会话还没确认',
-			'Plugin loaded: applies on next turn; restart after first install or update; current session unconfirmed',
-			locale,
-		);
+		return 'Plugin loaded: applies on next turn; restart after first install or update; current session unconfirmed';
 	}
 	if (harness.armed.includes('install')) {
-		return pick(
-			`配置已写入：新开 ${name} 读取；现有会话还没确认`,
-			`Config written: new ${name} sessions will read it; active sessions unconfirmed`,
-			locale,
-		);
+		return `Config written: new ${name} sessions will read it; active sessions unconfirmed`;
 	}
 	if (harness.armed.includes('slash')) {
-		return pick(
-			`在 ${name} 里执行 /purge on 后生效；当前会话还没确认`,
-			`Run /purge on inside ${name} to activate; current session unconfirmed`,
-			locale,
-		);
+		return `Run /purge on inside ${name} to activate; current session unconfirmed`;
 	}
-	return pick(
-		`已接管命令行：终端敲 ${name} 时自动注入`,
-		`CLI command managed: auto-injects when running ${name} in terminal`,
-		locale,
-	);
+	return `CLI command managed: auto-injects when running ${name} in terminal`;
 }
 
 export function scopeSummary(state, locale = getLocale()) {
@@ -386,15 +356,11 @@ export function scopeSummary(state, locale = getLocale()) {
 		.map(([id]) => harnessTitle(id, locale));
 	if (state.paused) {
 		return ids.length
-			? pick(`已暂停，这些执行器的配置还留着：${listJoin(ids, locale)}`, `Paused; configurations kept for: ${listJoin(ids, locale)}`, locale)
-			: pick('已暂停，暂时没有执行器在用这份人设', 'Paused; no targets are currently using this persona', locale);
+			? `Paused; configurations kept for: ${listJoin(ids, locale)}`
+			: 'Paused; no targets are currently using this persona';
 	}
 	if (!ids.length) {
-		return pick('选择要管理的执行器；写入通道后，按详情提示检查生效时机。', 'Select targets to manage; after enabling a channel, check its detail panel for activation timing.', locale);
+		return 'Select targets to manage; after enabling a channel, check its detail panel for activation timing.';
 	}
-	return pick(
-		`已选择 ${ids.length} 个执行器：${listJoin(ids, locale)}；实际生效看各自状态`,
-		`${ids.length} target(s) selected: ${listJoin(ids, locale)}; check individual status for activation`,
-		locale,
-	);
+	return `${ids.length} target(s) selected: ${listJoin(ids, locale)}; check individual status for activation`;
 }
