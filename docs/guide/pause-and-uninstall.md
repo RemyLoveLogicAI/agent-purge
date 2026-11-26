@@ -29,7 +29,7 @@ The Windows installer uninstaller also undoes takeovers and retains personas. If
 
 ## Permanently delete data
 
-To permanently delete data, back up first, then follow the [uninstall section of the CLI reference](/reference/cli#暂停撤销和卸载). `self-uninstall --yes` is different from a normal uninstall.
+To permanently delete data, back up first, then follow the [uninstall section of the CLI reference](/reference/cli#pause-undo-and-uninstall). `self-uninstall --yes` is different from a normal uninstall.
 
 ## Privacy boundaries
 

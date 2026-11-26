@@ -125,7 +125,7 @@ description: 中文、先结论、修改前先读代码
 修改代码前先阅读现有实现；不确定时明确说明。
 ```
 
-只有正文进入提示词。`description` 用于列表说明，旧键 `desc` 仍兼容；Web 编辑会保留未涉及的元数据。高级匹配、排序与数据目录配置见[使用指南](docs/reference/cli.md#人设文件)。
+只有正文进入提示词。`description` 用于列表说明，旧键 `desc` 仍兼容；Web 编辑会保留未涉及的元数据。高级匹配、排序与数据目录配置见[使用指南](docs/reference/cli.md#persona-files)。
 
 也可参考维护者的 [some-magic 人设仓库](https://github.com/ZiChuanLan/some-magic)。
 
@@ -190,7 +190,7 @@ npm uninstall -g agent-purge
 
 Windows 安装器卸载也会先撤销接管并保留人设。发生恢复冲突时，保留报错指出的文件和凭据，先比较修改再处理；不要直接删除备份。历史会话中已经发送的内容无法撤回。
 
-需要永久删除数据时，先备份，再按[完整卸载说明](docs/reference/cli.md#暂停撤销和卸载)操作；`self-uninstall --yes` 与普通卸载不同。
+需要永久删除数据时，先备份，再按[完整卸载说明](docs/reference/cli.md#pause-undo-and-uninstall)操作；`self-uninstall --yes` 与普通卸载不同。
 
 ## 隐私与使用边界
 

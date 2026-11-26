@@ -38,7 +38,7 @@ Collaborate in English. Give the conclusion first, then the evidence.
 Read the existing implementation before changing code; state uncertainty clearly.
 ```
 
-Only the body enters the prompt. `description` is used in listings; the older `desc` key is still supported. Web editing preserves unrelated metadata. See the [CLI reference](/reference/cli#人设文件) for advanced matching, ordering, and data-directory configuration.
+Only the body enters the prompt. `description` is used in listings; the older `desc` key is still supported. Web editing preserves unrelated metadata. See the [CLI reference](/reference/cli#persona-files) for advanced matching, ordering, and data-directory configuration.
 
 The maintainer's [some-magic persona repository](https://github.com/ZiChuanLan/some-magic) is another reference.
 
