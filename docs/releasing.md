@@ -76,7 +76,7 @@ The script first checks for an existing installation, desktop shortcut, or Start
 4. Stopping uninstall and retaining credentials on a restore conflict.
 5. Uninstall after repair, checking persona and original configuration bytes, registry, and shortcuts.
 
-A locally isolated test is not a fresh system. Before release also check old Node versions, GUI prompts, SmartScreen, upgrades across versions, insufficient permissions, and [known overwrite-install issues](reference/compatibility.md#已知发布限制).
+A locally isolated test is not a fresh system. Before release also check old Node versions, GUI prompts, SmartScreen, upgrades across versions, insufficient permissions, and [known overwrite-install issues](reference/compatibility.md#known-release-limitations).
 
 Prefer a disposable Windows runner or VM for installation/uninstallation acceptance: a separate `AGENT_PURGE_HOME` cannot isolate the real Windows registry and known folders. Do not improvise install/uninstall scripts in a primary user directory. PowerShell's `$home` is the built-in read-only `$HOME` and cannot be used for a temporary path. Use a name such as `$fixtureRoot`, stop on errors, and verify absolute paths are inside the dedicated test directory before deletion.
 

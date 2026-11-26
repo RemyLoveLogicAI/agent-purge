@@ -63,27 +63,27 @@
 
 口径：一行一条独立护栏指令。只统计强信号（拒答 / 内容政策 / 防注入 / 防泄密 / 权限门），不统计 `must not` 这类编码规范表述。机器可读数据在 `matrix.json` 的 `safety` 字段（`off` = 未注入时条数，`purged` = 注入后条数，`null` = 没抓包），测试会校验它与 `purgeKind` 不矛盾：replace 必须归零，partial 允许残留但必须写清 `residue`，append 不许声称删掉。
 
-## 系统、浏览器与发行形式
+## Systems, browsers, and distribution formats
 
-| 项目 | 已执行 | 尚不能据此承诺 |
+| Item | Executed | Not established by this evidence |
 |---|---|---|
-| Windows 11 x64 | Node 20.20.2 / 22.23.4 / 24.13.1 回归 | 所有 Windows/CPU 版本 |
-| Ubuntu 24.04 WSL2 x64 | Node 20.20.2 / 22.23.4 / 24.13.1 回归 | 原生 Linux 桌面及其他发行版 |
-| Web | Edge 156、Firefox 157、WebKit 27.2 共 21 项；320/390/768/1440px | macOS/Safari 系统集成、完整人工无障碍认证 |
-| npm | Windows 与 Linux 实际 tarball 离线安装、CLI/Web | 未测的包管理器和受限企业环境 |
-| Windows ZIP / 独立 EXE | 解压后运行；独立 EXE 在无 Node 的 PATH 下运行 | 全新操作系统或已签名发行 |
-| Windows 安装器 | 临时目录连续三轮安装、重装、原生启动器、冲突阻止卸载及数据保留 | 干净 VM、跨版本升级、所有目录 |
-| macOS | 已配置 CI 矩阵 | 本轮没有 macOS 实机或远端运行证据 |
-| Linux 发行包 | Ubuntu 24.04 上构建 `linux-x64` / `linux-arm64` 二进制、`.tar.gz`、`.deb`；`.deb` 实际 `dpkg -i` 安装、运行 `--help` / `status` 后 `dpkg -r` 干净卸载；便携包的 `install.sh` 装到 `~/.local` 后可执行；独立二进制在 PATH 无 Node 时运行 | 原生 Linux 桌面环境与多数发行版的桌面启动器；AppImage 取决于 runner 能否取到 appimagetool |
+| Windows 11 x64 | Node 20.20.2 / 22.23.4 / 24.13.1 regression | All Windows and CPU versions |
+| Ubuntu 24.04 WSL2 x64 | Node 20.20.2 / 22.23.4 / 24.13.1 regression | Native Linux desktops and other distributions |
+| Web | 21 tests across Edge 156, Firefox 157 and WebKit 27.2; 320/390/768/1440px | macOS/Safari system integration and full manual accessibility certification |
+| npm | Actual offline tarball installation and CLI/Web on Windows and Linux | Untested package managers and restricted enterprise environments |
+| Windows ZIP / standalone EXE | Run after extraction; standalone EXE run with no Node on PATH | Fresh operating systems or signed releases |
+| Windows installer | Three consecutive install/reinstall cycles in a temporary directory, native launcher, blocked uninstall on conflicts and data retention | Clean VM, cross-version upgrades and all directories |
+| macOS | CI matrix configured | No local macOS or remote execution evidence in this round |
+| Linux packages | Built `linux-x64` / `linux-arm64` binaries, `.tar.gz` and `.deb` on Ubuntu 24.04; installed `.deb` with `dpkg -i`, ran `--help` / `status` and cleanly removed it with `dpkg -r`; portable `install.sh` installed to `~/.local` and ran; standalone binary ran without Node on PATH | Native Linux desktop environments and desktop launchers on most distributions; AppImage depends on the runner obtaining appimagetool |
 
-Linux 上的 Windows 参数桥接测试明确跳过。CI 矩阵定义不等于远端执行成功，必须核对对应提交。
+Windows argument-bridging tests are explicitly skipped on Linux. A defined CI matrix does not prove remote execution succeeded; check the corresponding commit.
 
-## 已知发布限制
+## Known release limitations
 
-- **覆盖安装存在环境相关失败**：工作区所在 H 盘出现两次卸载日志文件占用，重装退出码为 4；系统临时目录连续通过，但占用者与根因尚未确认。不要把“重跑通过”视为问题已修复。
-- 当前本地 Windows 产物未签名。SHA-256 只用于核对字节，不等于发布者签名。
-- 干净 Windows、macOS、跨版本升级和 Release 上传后重新下载核对仍需完成。
-- 不保证提示词改写后的模型表现；请求角色、人设命中与模型行为是三件事。
+- **Overwrite installation can fail in some environments**: two uninstall logs were locked on the workspace H drive and reinstall exited with code 4. Repeated runs passed in the system temporary directory, but the lock holder and root cause are unconfirmed. A successful rerun does not establish a fix.
+- Current local Windows artifacts are unsigned. SHA-256 verifies bytes, not publisher signatures.
+- Clean Windows and macOS, cross-version upgrades and re-downloading after Release upload still require verification.
+- Model behavior after prompt rewriting is not guaranteed; request role, persona marker hits and model behavior are distinct.
 
 ## 验证状态与第三方中转
 
