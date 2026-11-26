@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { locate, readShortcutTarget, scanDrives } from "../lib/locate.mjs";
 
-/** 造一个最小的 .lnk：只有 Header + LinkInfo(LocalBasePath)，够验解析器 */
+/** Build a minimal .lnk with Header + LinkInfo(LocalBasePath), sufficient to test the parser. */
 function makeLnk(path, target) {
 	const header = Buffer.alloc(0x4c);
 	header.writeUInt32LE(0x4c, 0);
@@ -21,11 +21,11 @@ function makeLnk(path, target) {
 }
 
 function sources(extra = {}) {
-	// appDirs 默认给空数组：macOS 上 /Applications 是绝对路径，不显式隔离就会读到真机安装
+	// Default appDirs to an empty array to isolate macOS /Applications from real installations.
 	return { home: "C:\\Users\\t", local: "C:\\Users\\t\\AppData\\Local", roaming: "C:\\Users\\t\\AppData\\Roaming", drives: [], shortcuts: new Map(), entries: [], appDirs: [], ...extra };
 }
 
-test("locate: 解析 .lnk 的 LocalBasePath（装在任何盘都指得对）", (t) => {
+test("locate: parse .lnk LocalBasePath on any drive", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-lnk-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	const lnk = join(dir, "WorkBuddy.lnk");
@@ -33,7 +33,7 @@ test("locate: 解析 .lnk 的 LocalBasePath（装在任何盘都指得对）", (
 	assert.equal(readShortcutTarget(lnk), "F:\\workbuddy\\WorkBuddy.exe");
 });
 
-test("locate: LinkInfo 缺失时从二进制里兜底捞 exe 路径", (t) => {
+test("locate: extract an executable path from binary when LinkInfo is missing", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-lnk-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	const lnk = join(dir, "broken.lnk");
@@ -42,13 +42,13 @@ test("locate: LinkInfo 缺失时从二进制里兜底捞 exe 路径", (t) => {
 	assert.equal(readShortcutTarget(lnk), "F:\\apps\\ZCode\\ZCode.exe");
 });
 
-test("locate: 快捷方式装在 F 盘也能定位（不再只看默认目录）", () => {
+test("locate: locate shortcuts on F rather than only default directories", () => {
 	const s = sources({ shortcuts: new Map([["workbuddy", "F:\\workbuddy\\WorkBuddy.exe"]]) });
 	const hit = locate({ names: ["WorkBuddy"], exe: ["WorkBuddy.exe"], folder: ["WorkBuddy"] }, s);
 	assert.deepEqual(hit, { dir: "F:\\workbuddy", exe: "F:\\workbuddy\\WorkBuddy.exe", source: "shortcut" });
 });
 
-test("locate: 同名前缀的另一个程序不会把 antigravity 抢走", () => {
+test("locate: another program with a shared prefix cannot claim antigravity", () => {
 	const s = sources({
 		shortcuts: new Map([
 			["antigravity tools", "H:\\Antigravity Tools\\antigravity-tools.exe"],
@@ -59,7 +59,7 @@ test("locate: 同名前缀的另一个程序不会把 antigravity 抢走", () =>
 	assert.equal(hit.exe, "C:\\Users\\t\\AppData\\Local\\Programs\\antigravity\\Antigravity.exe");
 });
 
-test("locate: 没有快捷方式时扫各盘常见根", (t) => {
+test("locate: scan common drive roots when shortcuts are absent", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-drive-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	mkdirSync(join(dir, "Apps", "WorkBuddy"), { recursive: true });
@@ -70,7 +70,7 @@ test("locate: 没有快捷方式时扫各盘常见根", (t) => {
 	assert.equal(hit.source, "guess");
 });
 
-test("locate: 最后回落到注册表卸载项", (t) => {
+test("locate: fall back to registry uninstall entries", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-reg-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	writeFileSync(join(dir, "WorkBuddy.exe"), "", "utf8");
@@ -84,9 +84,9 @@ test("locate: 最后回落到注册表卸载项", (t) => {
 });
 
 
-// #24：Electron 桌面端的卸载项普遍是 InstallLocation 为空 + DisplayIcon 指到 .ico。
-// 旧逻辑只认「DisplayIcon 是 exe」，这类安装整条被跳过，于是只剩「配置目录存在」一条判据。
-test("locate: 卸载项只有 DisplayIcon 图标、InstallLocation 为空时按图标所在目录认安装（#24）", (t) => {
+// #24：Electron desktop uninstall entries often have empty InstallLocation and DisplayIcon pointing to an .ico.
+// Old logic accepted only exe DisplayIcons, skipping such installs and leaving only configuration directory evidence.
+test("locate: detect installation from icon directory when only DisplayIcon is set (#24)", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-reg-icon-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	writeFileSync(join(dir, "Acme Desktop.exe"), "", "utf8");
@@ -101,7 +101,7 @@ test("locate: 卸载项只有 DisplayIcon 图标、InstallLocation 为空时按�
 	assert.equal(hit.source, "registry");
 });
 
-test("locate: 图标目录里的 exe 名与声明不一致时仍认目录，但 exe 留空（改名不丢安装）", (t) => {
+test("locate: recognize icon directory when exe name differs, but leave exe empty", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-reg-icon3-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	writeFileSync(join(dir, "Renamed Build.exe"), "", "utf8");
@@ -115,7 +115,7 @@ test("locate: 图标目录里的 exe 名与声明不一致时仍认目录，但 
 	assert.equal(hit.exe, null);
 });
 
-test("locate: 图标目录里没有 exe 时不当成安装（安装器缓存目录不是安装目录）", (t) => {
+test("locate: do not treat an icon directory without an exe as an installation", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-reg-icon2-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	writeFileSync(join(dir, "productIcon.ico"), "", "utf8");
@@ -126,7 +126,7 @@ test("locate: 图标目录里没有 exe 时不当成安装（安装器缓存目�
 	);
 	assert.equal(hit, null);
 });
-test("locate: 目录名不标准、也没快捷方式时靠盘内浅扫兜底", (t) => {
+test("locate: shallow drive scan finds nonstandard directories without shortcuts", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-scan-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	const deep = join(dir, "Green", "WorkBuddy2");
@@ -138,7 +138,7 @@ test("locate: 目录名不标准、也没快捷方式时靠盘内浅扫兜底", 
 	assert.equal(hit.source, "scan");
 });
 
-test("scanDrives: 跳过系统目录，找不到就返回空", (t) => {
+test("scanDrives: skip system directories and return empty when absent", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-scan2-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	mkdirSync(join(dir, "Windows", "Sys"), { recursive: true });
@@ -146,9 +146,9 @@ test("scanDrives: 跳过系统目录，找不到就返回空", (t) => {
 	assert.deepEqual(scanDrives(["WorkBuddy.exe"], [dir]), []);
 });
 
-test("fixedDrives: 网络映射盘不参与探测（断线的映射盘会卡 SMB 超时，#22）", async () => {
+test("fixedDrives: skip mapped network drives (disconnected drives block until SMB timeout, #22)", async () => {
 	const { localDriveRoots, mappedDriveLetters } = await import("../lib/locate.mjs");
-	// reg query HKCU\Network 的真实形状：子键名就是盘符，值在下一层
+	// Real reg query HKCU\Network structure: subkey names are drive letters and values are one level down.
 	const regOut = [
 		"HKEY_CURRENT_USER\\Network\\Z",
 		"    ConnectionType    REG_DWORD    0x1",
@@ -156,9 +156,9 @@ test("fixedDrives: 网络映射盘不参与探测（断线的映射盘会卡 SMB
 		"HKEY_CURRENT_USER\\Network\\y",
 	].join("\r\n");
 	assert.deepEqual([...mappedDriveLetters(regOut)].sort(), ["Y", "Z"]);
-	assert.deepEqual([...mappedDriveLetters("")], [], "没有 HKCU\\Network 时不该认出任何盘符");
+	assert.deepEqual([...mappedDriveLetters("")], [], "No drive letters should be detected without HKCU\\Network");
 
-	// 网络盘要在名单里就剔掉：连 existsSync 都不许进，否则整个进程等 SMB 超时
+	// Exclude network drives before existsSync to avoid blocking the process until SMB timeout.
 	const asked = [];
 	const list = localDriveRoots({
 		network: new Set(["X", "Y", "Z"]),
@@ -169,11 +169,11 @@ test("fixedDrives: 网络映射盘不参与探测（断线的映射盘会卡 SMB
 		},
 	});
 	assert.deepEqual(list, ["C:\\"]);
-	for (const letter of ["X", "Y", "Z"]) assert.ok(!asked.includes(`${letter}:\\`), `${letter}: 不能去 existsSync`);
-	assert.equal(asked.length, 21, "其余本地盘仍然逐个探测");
+	for (const letter of ["X", "Y", "Z"]) assert.ok(!asked.includes(`${letter}:\\`), `${letter}: must not be passed to existsSync`);
+	assert.equal(asked.length, 21, "Remaining local drives must still be probed individually");
 
-	// 注册表里查不到的会话内映射（net use /persistent:no）第一次仍会等超时：
-	// 量到「这不是本地盘」之后就不再问第二次，缓存过期刷新不会再卡一遍
+	// Session mappings absent from the registry (net use /persistent:no) still time out on first probe;
+	// after measuring a nonlocal drive, subsequent scans and cache refreshes must not block again.
 	const slow = new Set();
 	const askedSlow = [];
 	const firstSlow = localDriveRoots({
@@ -185,17 +185,17 @@ test("fixedDrives: 网络映射盘不参与探测（断线的映射盘会卡 SMB
 			return root === "C:\\";
 		},
 	});
-	assert.equal(slow.size, 24, "耗时超过阈值的盘符要记下来");
+	assert.equal(slow.size, 24, "Record drives exceeding the time threshold");
 	assert.deepEqual(firstSlow, ["C:\\"]);
 	assert.deepEqual(
 		localDriveRoots({ network: new Set(), slow, slowAfterMs: 0, probe: (root) => { askedSlow.push(root); return true; } }),
 		[],
-		"已经量到慢的盘不参与下一轮探测",
+		"Known slow drives are excluded from the next scan",
 	);
-	assert.equal(askedSlow.length, 24, "第二轮一个盘符都不该再问");
+	assert.equal(askedSlow.length, 24, "No drives should be probed again in the second scan");
 });
 
-test("fixedDrives: 本机盘符照常列出（过滤网络盘不影响本地盘）", { skip: process.platform !== "win32" }, async (t) => {
+test("fixedDrives: list local drives normally despite network-drive filtering", { skip: process.platform !== "win32" }, async (t) => {
 	const { fixedDrives } = await import("../lib/locate.mjs");
 	const saved = process.env.AGENT_PURGE_DRIVES;
 	delete process.env.AGENT_PURGE_DRIVES;
@@ -204,14 +204,14 @@ test("fixedDrives: 本机盘符照常列出（过滤网络盘不影响本地盘�
 		else process.env.AGENT_PURGE_DRIVES = saved;
 	});
 	const sys = `${process.env.SystemDrive || "C:"}\\`;
-	assert.ok(fixedDrives().includes(sys), `应列出系统盘 ${sys}`);
+	assert.ok(fixedDrives().includes(sys), `Should list system drive ${sys}`);
 });
 
-test("locate: 什么都没找到时返回 null", () => {
+test("locate: return null when nothing is found", () => {
 	assert.equal(locate({ names: ["Nope"], exe: ["Nope.exe"], folder: ["Nope"] }, sources()), null);
 });
 
-test("locate: 便携版 exe 带版本号也能认（PI-Desktop-Portable-0.21.0.exe）", (t) => {
+test("locate: recognize versioned portable executables (PI-Desktop-Portable-0.21.0.exe)", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-portable-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	const deep = join(dir, "Vivaldi");
@@ -227,20 +227,20 @@ test("locate: 便携版 exe 带版本号也能认（PI-Desktop-Portable-0.21.0.e
 	assert.equal(hit.source, "scan");
 });
 
-test("matchExeName: 通配符只按显式 * 生效，antigravity-tools 不会冒充 Antigravity.exe", async () => {
+test("matchExeName: wildcards require explicit *, and antigravity-tools does not match Antigravity.exe", async () => {
 	const { matchExeName } = await import("../lib/locate.mjs");
 	assert.equal(matchExeName("PI-Desktop-Portable-0.21.0.exe", "PI-Desktop-Portable*.exe"), true);
 	assert.equal(matchExeName("antigravity-tools.exe", "Antigravity.exe"), false);
 });
 
-test("locate: .lnk 的 ANSI 路径按系统码页解码（中文目录名不再乱码）", (t) => {
+test("locate: decode .lnk ANSI paths with the system code page, including non-ASCII directories", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-lnk-cjk-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	const lnk = join(dir, "WorkBuddy AI.lnk");
-	// `D:\WorkBuddy国际版\WorkBuddyAI\WorkBuddyAI.exe` 里的中文段按 GBK 编码
+	// The non-ASCII segment of the WorkBuddyAI path is GBK encoded.
 	const gbk = Buffer.from([
 		0x44, 0x3a, 0x5c, 0x57, 0x6f, 0x72, 0x6b, 0x42, 0x75, 0x64, 0x64, 0x79, // D:\WorkBuddy
-		0xb9, 0xfa, 0xbc, 0xca, 0xb0, 0xe6, // 国际版（GBK）
+		0xb9, 0xfa, 0xbc, 0xca, 0xb0, 0xe6, // International edition (GBK)
 		0x5c, 0x57, 0x6f, 0x72, 0x6b, 0x42, 0x75, 0x64, 0x64, 0x79, 0x41, 0x49, // \WorkBuddyAI
 		0x5c, 0x57, 0x6f, 0x72, 0x6b, 0x42, 0x75, 0x64, 0x64, 0x79, 0x41, 0x49, 0x2e, 0x65, 0x78, 0x65, // \WorkBuddyAI.exe
 	]);
@@ -255,16 +255,16 @@ test("locate: .lnk 的 ANSI 路径按系统码页解码（中文目录名不再�
 	writeFileSync(lnk, Buffer.concat([header, info, gbk, Buffer.from([0])]));
 
 	const parsed = readShortcutTarget(lnk);
-	assert.ok(parsed && parsed.endsWith("WorkBuddyAI.exe"), `应认出 exe：${parsed}`);
-	// 解码结果取决于本机 ANSI 码页：中文机（936）必须解出中文；CI 常见的 1252 机器上，
-	// GBK 字节本来就不会出现在真实 .lnk 里，此时退回 latin1 是可接受的，不能断言成 bug。
+	assert.ok(parsed && parsed.endsWith("WorkBuddyAI.exe"), `Should detect executable: ${parsed}`);
+	// Decoding depends on the local ANSI code page: code page 936 must decode Chinese correctly; on CI machines using 1252,
+	// GBK bytes would not normally occur in a real .lnk, so latin1 fallback is acceptable.
 	if (process.platform === "win32" && ansiCodePage() === "936") {
-		assert.match(parsed, /WorkBuddy国际版/, `936 机器上必须解对：${parsed}`);
+		assert.match(parsed, /WorkBuddy\u56fd\u9645\u7248/, `Code page 936 must decode correctly: ${parsed}`);
 	}
-	// 非 936 码页：不解出中文是预期行为，这里不做断言
+	// Other code pages are not expected to decode the Chinese text; do not assert it.
 });
 
-/** 本机 ANSI 码页；取不到返回空串（调用方按「不强制」处理） */
+/** Local ANSI code page; return an empty string if unavailable (caller does not enforce). */
 function ansiCodePage() {
 	if (process.platform !== "win32") return "";
 	try {
@@ -278,7 +278,7 @@ function ansiCodePage() {
 	}
 }
 
-test("locate: macOS 的 /Applications/<名字>.app 就是装了（不再只剩配置目录一条判据）", (t) => {
+test("locate: macOS /Applications/<name>.app indicates installation", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-app-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	const bundle = join(dir, "PI-Desktop.app");
@@ -291,7 +291,7 @@ test("locate: macOS 的 /Applications/<名字>.app 就是装了（不再只剩�
 	assert.equal(hit.source, "app");
 });
 
-test("locate: .app 名字必须精确相等，Antigravity Tools.app 不冒充 Antigravity", (t) => {
+test("locate: .app name must match exactly; Antigravity Tools.app does not match Antigravity", (t) => {
 	const dir = mkdtempSync(join(tmpdir(), "ap-app2-"));
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	mkdirSync(join(dir, "Antigravity Tools.app", "Contents", "MacOS"), { recursive: true });
