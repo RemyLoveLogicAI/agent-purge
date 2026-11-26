@@ -1,8 +1,8 @@
-# 发布流程
+# Release process
 
-构建和检查不会提交代码、推送、打标签、发布 npm 或创建 GitHub Release。`release-check` 只上传 Actions artifact。
+Building and checking do not commit, push, tag, publish to npm, or create a GitHub Release. `release-check` only uploads an Actions artifact.
 
-## 发布前检查
+## Pre-release checks
 
 ```bash
 npm ci --ignore-scripts
@@ -13,11 +13,13 @@ npx playwright install chromium firefox webkit
 npm run test:ui
 ```
 
-同时审核[兼容性与已知限制](reference/compatibility.md)。原始测试输出放在 `out/`，不要提交截图过程稿、缓存、私人配置或测试安装目录。
+Also review [compatibility and known limits](reference/compatibility.md). Put raw test output in `out/`; do not commit screenshot drafts, caches, private configuration, or test installation directories.
 
-## Windows 构建
+## Windows build
 
-构建机需要 Node.js 20+、Bun、GCC/g++（C++17）/windres/objdump 和 Inno Setup 6。窗口宿主还要 WebView2 SDK：`scripts/build-window-host.mjs` 从 NuGet 拉取钉死版本（`1.0.4314.35`）并校验 sha256，缓存在 `dist/.cache`，首次构建需联网；`WebView2Loader.dll` 随包分发，编译时只用到头文件。宿主必须 `-static` 链接 MinGW 运行库（libgcc / libstdc++ / libwinpthread），构建脚本会用 objdump 检查导入表，混进 MinGW DLL、检查工具不可用或导入表读不出来，都直接失败——用户机器上没有这些 DLL，宿主会以 `0xC0000135` 静默退出（issue #20）。允许回退的宿主编译失败会移除半成品，不能将失败的 exe 带进发布包。当前 CI 固定 Bun 1.4.4；每次发布记录实际工具链版本。
+The build machine needs Node.js 20+, Bun, GCC/g++ (C++17), windres, objdump, and Inno Setup 6. The window host also needs the WebView2 SDK: `scripts/build-window-host.mjs` downloads a pinned version (`1.0.4314.35`) from NuGet, verifies its SHA-256, and caches it in `dist/.cache`; the first build requires network access. `WebView2Loader.dll` is distributed with the package; only headers are used at compile time.
+
+The host must link MinGW runtimes (libgcc, libstdc++, and libwinpthread) with `-static`. The build checks the import table with objdump and fails if MinGW DLLs are included, the checking tool is unavailable, or the table cannot be read. User machines do not have these DLLs, and the host would silently exit with `0xC0000135` (issue #20). A host build failure eligible for fallback removes partial output; a failed executable must not enter the release package. CI currently pins Bun 1.4.4; record the actual toolchain versions for each release.
 
 ```bash
 npm run build:setup
@@ -26,86 +28,88 @@ npm run test:artifacts
 npm run release:checksums
 ```
 
-| 文件 | 内容 |
+| File | Contents |
 |---|---|
-| `dist/agent-purge-<版本>.zip` | Node 薄包及图形启动器，需要外部 Node |
-| `dist/agent-purge-<版本>-setup.exe` | 薄包安装器，需要外部 Node |
-| `dist/agent-purge.exe` | 内含运行时的独立 Windows EXE |
-| `dist/SHA256SUMS.txt` | 最终三个产物的校验值 |
+| `dist/agent-purge-<version>.zip` | Node thin package and graphical launcher, requiring external Node |
+| `dist/agent-purge-<version>-setup.exe` | Thin package installer, requiring external Node |
+| `dist/agent-purge.exe` | Standalone Windows EXE with bundled runtime |
+| `dist/SHA256SUMS.txt` | Checksums of the three final artifacts |
 
-ZIP 里的 `agent-purge.exe` 是薄启动器，**不是**独立 EXE。安装器构建会校验薄包的 manifest 与当前源码，不能复用旧目录或混装产品。
+The `agent-purge.exe` in the ZIP is a thin launcher, **not** the standalone EXE. The installer build checks the thin-package manifest against current source; do not reuse an old directory or mix product versions.
 
-## macOS 构建
+## macOS build
 
-`npm run build:dmg`（仅可在 macOS 上执行，正式发布由 `.github/workflows/release.yml` 的 `build_mac` 在 `macos-latest` runner 自动执行）会借助 Bun 编译 `darwin-arm64` / `darwin-x64` 单文件二进制，打包 `.app` 与 `AppIcon.icns`，再用 `hdiutil` 生成并校验：
+`npm run build:dmg` runs only on macOS. Official releases run `build_mac` in `.github/workflows/release.yml` on `macos-latest`. It uses Bun to compile single-file `darwin-arm64` and `darwin-x64` binaries, packages an `.app` and `AppIcon.icns`, then generates and verifies these with `hdiutil`:
 
-- `dist/agent-purge-<版本>-darwin-arm64.dmg`
-- `dist/agent-purge-<版本>-darwin-x64.dmg`
+- `dist/agent-purge-<version>-darwin-arm64.dmg`
+- `dist/agent-purge-<version>-darwin-x64.dmg`
 
-产物未做 Apple `codesign` 签名与 `notarytool` 公证，首次打开会触发 Gatekeeper 提示（右键「打开」或 `xattr -cr` 放行）。
+Artifacts are not Apple `codesign` signed or `notarytool` notarized. Gatekeeper will prompt on first launch; right-click Open or use `xattr -cr` to allow it.
 
+## Linux build
 
-## Linux 构建
+`npm run build:linux` can run locally on Linux. For official releases, `build_linux` in `.github/workflows/release.yml` runs on `ubuntu-latest`. Bun cross-compiles single-file `linux-x64` and `linux-arm64` binaries, and the native architecture runs a real smoke test of `--help`, `status`, `--serve` static assets, and version. Before release, `verify_linux` runs `npm run test:linux-artifacts` on native x64 and ARM64 runners to check hashes, single-file execution, portable installation, Debian installation/run/uninstall, and the optional AppImage. Any failure blocks release.
 
-`npm run build:linux`（也可在任意 Linux 上本地执行，正式发布由 `.github/workflows/release.yml` 的 `build_linux` 在 `ubuntu-latest` runner 自动执行）用 Bun 交叉编译 `linux-x64` / `linux-arm64` 单文件二进制，本机架构会真实跑一次 `smoke`（`--help`、`status`、`--serve` 静态资源与版本号）。发布前 `verify_linux` 另在 x64 与 ARM64 原生 runner 执行 `npm run test:linux-artifacts`，核对哈希、单文件运行、便携安装、Debian 安装/运行/卸载与可选 AppImage；任一失败都不会进入发布。产物包括：
+Artifacts include:
 
-- `dist/agent-purge-<版本>-linux-<架构>`：自带运行时的单文件二进制
-- `dist/agent-purge-<版本>-linux-<架构>.tar.gz`：便携包，含 `.desktop`、图标、`LICENSE`、`README` 与免 root 的 `install.sh`
-- `dist/agent-purge-<版本>-linux-<架构>.deb`：`dpkg-deb` 构建并回读校验元数据与文件清单，安装到 `/opt/agent-purge` 并注册 `/usr/bin` 入口
-- `dist/agent-purge-<版本>-linux-<架构>.AppImage`：仅在 runner 上能取到 `appimagetool` 时生成，不作强制要求
-- `dist/linux-manifest.json`：上述产物的 SHA-256 汇总
+- `dist/agent-purge-<version>-linux-<arch>`: single-file binary with runtime.
+- `dist/agent-purge-<version>-linux-<arch>.tar.gz`: portable package with `.desktop`, icon, `LICENSE`, `README`, and root-free `install.sh`.
+- `dist/agent-purge-<version>-linux-<arch>.deb`: built with `dpkg-deb`, with metadata and file list read back and checked; installs under `/opt/agent-purge` and registers an entry in `/usr/bin`.
+- `dist/agent-purge-<version>-linux-<arch>.AppImage`: generated only if the runner can obtain `appimagetool`; not mandatory.
+- `dist/linux-manifest.json`: SHA-256 summary of these artifacts.
 
-可用 `--native-only` 只构建当前架构，`--no-deb` / `--no-appimage` 关闭对应产物。`.deb` 的维护者字段可用 `AGENT_PURGE_MAINTAINER` 覆盖。
-## 安装验收
+Use `--native-only` to build only the current architecture; `--no-deb` and `--no-appimage` disable the respective artifacts. Override the `.deb` maintainer field with `AGENT_PURGE_MAINTAINER`.
 
-`scripts/check-installer.ps1` 默认只接受临时 Windows Actions runner。本机验收需要明确使用：
+## Installation acceptance
+
+`scripts/check-installer.ps1` accepts only temporary Windows Actions runners by default. For local acceptance, explicitly run:
 
 ```powershell
 ./scripts/check-installer.ps1 -AllowLocalMachine
 ```
 
-脚本会先检查是否已有安装记录、桌面快捷方式或开始菜单组，存在则拒绝改动。测试使用系统临时目录、独立 HOME 和专属数据，执行：
+The script first checks for an existing installation, desktop shortcut, or Start menu group and refuses to modify anything if found. It uses the system temporary directory, an isolated HOME, and dedicated data to test:
 
-1. 缺少 Node 时拒绝安装且不挂起。
-2. 中文/空格路径的安装、CLI 应用、同版本重装。
-3. 通过实际原生启动器访问 Web 和静态资源。
-4. 恢复冲突时停止卸载并保留凭据。
-5. 修复后卸载，核对人设与原配置字节、注册表和快捷方式。
+1. Refusal to install without Node, without hanging.
+2. Installation in paths with Chinese characters or spaces, CLI application, and reinstalling the same version.
+3. Access to Web and static assets through the actual native launcher.
+4. Stopping uninstall and retaining credentials on a restore conflict.
+5. Uninstall after repair, checking persona and original configuration bytes, registry, and shortcuts.
 
-本机隔离测试不等于全新系统。发布前还需检查低版本 Node、GUI 提示、SmartScreen、跨版本升级、权限不足和[已知覆盖安装问题](reference/compatibility.md#已知发布限制)。
+A locally isolated test is not a fresh system. Before release also check old Node versions, GUI prompts, SmartScreen, upgrades across versions, insufficient permissions, and [known overwrite-install issues](reference/compatibility.md#已知发布限制).
 
-安装/卸载验收优先在一次性 Windows runner 或虚拟机执行：独立 `AGENT_PURGE_HOME` 不能隔离 Windows 的真实注册表和已知文件夹。不要在主力用户目录临时拼安装/卸载脚本。PowerShell 的 `$home` 就是内置只读 `$HOME`，不能用于临时路径；使用 `$fixtureRoot` 等名称，开启遇错终止，删除前核对绝对路径确实位于专属测试目录中。
+Prefer a disposable Windows runner or VM for installation/uninstallation acceptance: a separate `AGENT_PURGE_HOME` cannot isolate the real Windows registry and known folders. Do not improvise install/uninstall scripts in a primary user directory. PowerShell's `$home` is the built-in read-only `$HOME` and cannot be used for a temporary path. Use a name such as `$fixtureRoot`, stop on errors, and verify absolute paths are inside the dedicated test directory before deletion.
 
 ## CI
 
-- `test.yml`：Windows / Ubuntu / macOS × Node 20 / 22 / 24，tarball 安装，三浏览器 UI 检查，以及 Ubuntu 上的 `build:linux` 产物构建与上传。
-- `release-check.yml`：Windows 构建、ZIP/EXE、安装卸载、校验值和候选包 artifact。
-- `release.yml`：版本 tag 或手动触发的正式发布流程；先跑完整测试与打包，再发布 npm 和 GitHub Release。
-- Actions 固定到 commit SHA；构建任务只读，只有 publish job 获得 `contents: write` 和 `id-token: write`。
-- 本地未提交改动不在远端历史绿色记录覆盖范围内，必须在最终提交上重新运行。
+- `test.yml`: Windows, Ubuntu, and macOS across Node 20, 22, and 24; tarball installation; three-browser UI checks; and Ubuntu `build:linux` artifact build and upload.
+- `release-check.yml`: Windows build, ZIP/EXE, install/uninstall, checksums, and candidate package artifact.
+- `release.yml`: official release triggered by a version tag or manually; runs full tests and packaging before publishing npm and GitHub Release.
+- Actions are pinned to commit SHA. Build jobs are read-only; only the publish job gets `contents: write` and `id-token: write`.
+- Remote green runs do not cover local uncommitted changes. Rerun checks on the final commit.
 
-## 正式发行
+## Official release
 
-`release.yml` 是唯一的自动发布入口；`release-check.yml` 仍然只产出候选 artifact，不会发布。发布前确认：
+`release.yml` is the only automatic release entry point. `release-check.yml` produces candidate artifacts only and does not publish. Before releasing, confirm:
 
-1. `package.json` 版本与 tag 一致（例如 `0.2.11` 对应 `v0.2.11`）。
-2. GitHub 仓库 secret `NPM_TOKEN` 是 npm automation/granular token，具备 `agent-purge` 的 publish 权限；不要提交到 `.npmrc` 或源码。
-3. 版本、变更、许可和兼容性说明已审核；工作区干净。
+1. The `package.json` version matches the tag (for example, `0.2.11` and `v0.2.11`).
+2. The GitHub repository secret `NPM_TOKEN` is an npm automation or granular token with publish permission for `agent-purge`; do not commit it to `.npmrc` or source.
+3. Version, changes, license, and compatibility notes have been reviewed and the working tree is clean.
 
-发布方式：
+Release with:
 
 ```bash
 git tag v0.2.11
 git push origin v0.2.11
 ```
 
-tag 推送会触发 `release.yml`：
+The tag push triggers `release.yml`:
 
-1. `verify`：Windows/Linux/macOS × Node 20/22/24 上 `npm ci`、`check:repo`、全部测试、`test:package`。
-2. `build` / `build_mac` / `build_linux`：分别在 Windows 上构建 ZIP/EXE/setup 并跑安装验收、在 `macos-latest` 上构建 arm64/x64 未签名 `.dmg`、在 `ubuntu-latest` 上构建 Linux 二进制 / `.tar.gz` / `.deb`（AppImage 可选）；汇总产物、校验和与 npm tarball。
-3. `verify_linux`：x64 与 ARM64 原生 Linux runner 校验并运行每种对应架构产物。
-4. `publish`：校验 tag 与版本一致、核对所有产物 SHA-256；`npm publish --provenance`（已存在的同版本会跳过）；创建 GitHub Release 并上传附件。
+1. `verify`: `npm ci`, `check:repo`, all tests, and `test:package` on Windows, Linux, and macOS across Node 20, 22, and 24.
+2. `build` / `build_mac` / `build_linux`: respectively build Windows ZIP/EXE/setup and run installer acceptance, build unsigned arm64/x64 `.dmg` on `macos-latest`, and build Linux binaries, `.tar.gz`, and `.deb` on `ubuntu-latest` (AppImage optional); collect artifacts, checksums, and the npm tarball.
+3. `verify_linux`: native x64 and ARM64 Linux runners verify and run artifacts for each architecture.
+4. `publish`: confirm tag and version match and verify artifact SHA-256 values; run `npm publish --provenance` (skipping an already-published version); create a GitHub Release and upload attachments.
 
-需要重跑时使用 Actions 的 `workflow_dispatch`，输入已存在的 tag；发布是幂等的，不会重复上传同版本 npm 包，Release 附件使用 `--clobber` 覆盖。
+To rerun, use Actions `workflow_dispatch` with the existing tag. Publishing is idempotent: the same npm version is not uploaded twice, and Release assets are replaced using `--clobber`.
 
-正式发行前核对 [LICENSE](https://github.com/ZiChuanLan/agent-purge/blob/main/LICENSE)、README 和[免责与合规声明](LEGAL.md)的表述。软件继续采用 MIT 许可；使用声明用于说明风险与责任，不附加相冲突的授权限制。修改声明时应同步 README 中的完整文本。
+Before an official release, review [LICENSE](https://github.com/ZiChuanLan/agent-purge/blob/main/LICENSE), README, and the [legal and compliance statement](LEGAL.md). The software remains MIT licensed; the statement explains risks and responsibilities without adding conflicting licensing restrictions. Keep the README's full statement synchronized when changing it.
