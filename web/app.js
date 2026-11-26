@@ -1672,10 +1672,7 @@ $('import-form')?.addEventListener('submit', async e => {
     const { total = 0, imported = [] } = res.result || {};
     importStatus.className = 'status-box success';
     const names = listJoin(imported.map(x => x.name || x.id).slice(0, 3));
-    importStatus.textContent = pick(
-      `导入 ${total} 个人设${names ? `（${names}${imported.length > 3 ? ' 等' : ''}）` : ''}。`,
-      `Imported ${total} persona(s)${names ? ` (${names}${imported.length > 3 ? ', etc.' : ''})` : ''}.`,
-    );
+    importStatus.textContent = `Imported ${total} persona(s)${names ? ` (${names}${imported.length > 3 ? ', etc.' : ''})` : ''}.`;
     await refresh();
     notify(`Pulled ${total} persona(s).`, 'good');
     setTimeout(() => importDialog?.close(), 1200);
