@@ -31,7 +31,7 @@ test('openAppWindow passes windowsHide: false so Chromium window is visible (iss
 });
 
 test('openAppWindow gives the console window a dedicated profile so its pid stays usable (issue #14)', {
-  skip: !findChromiumAppBrowser() ? '本机没有 Edge/Chrome，--app 分支不适用' : false,
+  skip: !findChromiumAppBrowser() ? 'No Edge/Chrome available locally; --app branch does not apply' : false,
 }, () => {
   const profileDir = join(mkdtempSync(join(tmpdir(), 'ap-window-profile-')), 'window-profile');
   let capturedArgs = null;
@@ -43,7 +43,7 @@ test('openAppWindow gives the console window a dedicated profile so its pid stay
   assert.equal(result.mode, 'app');
   assert.ok(capturedArgs.includes(`--user-data-dir=${profileDir}`));
   assert.ok(capturedArgs.includes('--no-first-run'));
-  // Edge 的首启不受 --no-first-run 约束，会经 WAM 把系统 Microsoft 账号关联进新 profile
+  // Edge first-run ignores --no-first-run and can associate the system Microsoft account with a new profile through WAM
   assert.ok(capturedArgs.includes('--disable-sync'), 'fresh profile should not auto-link the OS Microsoft account');
   assert.ok(capturedArgs.includes('--app=http://127.0.0.1:12345'));
 });
@@ -84,7 +84,7 @@ test('openAppWindow prefers the native WebView2 host and passes window state plu
     profileDir: 'C:\\data\\window-profile',
     nativeExe: 'C:\\app\\agent-purge-window.exe',
     nativeReady: true,
-    confirmClose: '关闭窗口会同时退出 agent-purge 服务，确定关闭吗？',
+    confirmClose: 'Closing the window also exits the agent-purge service. Close it?',
     spawnProcess: (command, args) => { captured = { command, args }; return child; },
   });
   assert.equal(result.engine, 'webview2');
@@ -96,7 +96,7 @@ test('openAppWindow prefers the native WebView2 host and passes window state plu
   const stateIndex = captured.args.indexOf('--state');
   assert.equal(captured.args[stateIndex + 1], join('C:\\data\\window-profile', 'window-state.txt'));
   const confirmIndex = captured.args.indexOf('--confirm-close');
-  assert.equal(captured.args[confirmIndex + 1], '关闭窗口会同时退出 agent-purge 服务，确定关闭吗？');
+  assert.equal(captured.args[confirmIndex + 1], 'Closing the window also exits the agent-purge service. Close it?');
 });
 
 test('openAppWindow skips the close prompt when the setting is off', () => {
@@ -220,7 +220,7 @@ test('focusConsoleWindow tells "window is gone" apart from "window exists but st
   assert.deepEqual(
     focusConsoleWindow({ pid: 4321 }, { platform: 'win32', run: () => 'AGENT_PURGE_WINDOW_UNFOCUSED\n' }),
     { found: true, focused: false },
-    '窗口还在只是没抢到焦点时，调用方不能再开一扇',
+    'If the window exists but did not gain focus, the caller must not open another',
   );
 
   assert.deepEqual(

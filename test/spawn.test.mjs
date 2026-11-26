@@ -11,7 +11,7 @@ const dir = mkdtempSync(join(tmpdir(), 'ap argv '));
 test.after(() => rmSync(dir, { recursive:true, force:true }));
 const script = join(dir,'node_modules','fixture','cli.js'); mkdirSync(dirname(script),{recursive:true});
 writeFileSync(script,'console.log(JSON.stringify(process.argv.slice(2)))');
-const values = ['', '"', 'a"b', '中文', 'a b\\', '\\', 'line1\nline2', '%PATH%', '^&|<>!', 'x'.repeat(10000), 'developer_instructions="引号 \\" and \\n"'];
+const values = ['', '"', 'a"b', '\u4e2d\u6587', 'a b\\', '\\', 'line1\nline2', '%PATH%', '^&|<>!', 'x'.repeat(10000), 'developer_instructions="\u5f15\u53f7 \\" and \\n"'];
 async function run(file,args,opts={}) {
  const child=spawnBin(file,args,{...opts,stdio:['ignore','pipe','pipe']});
  let stdout='',stderr=''; child.stdout.on('data',d=>stdout+=d); child.stderr.on('data',d=>stderr+=d);
@@ -84,7 +84,7 @@ IF EXIST "%NPM_PREFIX_NPM_CLI_JS%" (
   SET "NPM_CLI_JS=%NPM_PREFIX_NPM_CLI_JS%"
 )
 "%NODE_EXE%" "%NPM_CLI_JS%" %*`);
- const spaced=join(dir,'安装 space');
+ const spaced=join(dir,'\u5b89\u88c5 space');
  assert.deepEqual(JSON.parse(await run(file,['install','--prefix',spaced,'--ignore-scripts'])),['install','--prefix',spaced,'--ignore-scripts']);
 });
 test('ordinary PowerShell runs its own logic and receives literal args',{skip:process.platform!=='win32'},async()=>{
@@ -94,13 +94,13 @@ test('ordinary PowerShell runs its own logic and receives literal args',{skip:pr
 });
 test('nonstandard batch refuses unsafe args, detection returns null instead of throwing',{skip:process.platform!=='win32'},()=>{
  const file=join(dir,'ordinary.cmd'); writeFileSync(file,'@echo off\necho hello\n');
- assert.throws(()=>spawnBin(file,['%PATH%']),/非标准 batch/); assert.throws(()=>spawnBin(file,['']),/非标准 batch/);
+ assert.throws(()=>spawnBin(file,['%PATH%']),/Nonstandard batch/); assert.throws(()=>spawnBin(file,['']),/Nonstandard batch/);
  assert.equal(captureBin(file,['%PATH%']),null);
 });
 test('pi official launcher preserves argv, but modified launcher is not bypassed',{skip:process.platform!=='win32'},async()=>{
  const file=join(dir,'pi.cmd');writeFileSync(join(dir,'pi-launcher.js'),'console.log(JSON.stringify(process.argv.slice(2)))');
  writeFileSync(file,'@ECHO off\nnode "%~dp0pi-launcher.js" %*');assert.deepEqual(JSON.parse(await run(file,values)),values);
- writeFileSync(file,'@ECHO off\necho changed\nnode "%~dp0pi-launcher.js" %*');assert.throws(()=>spawnBin(file,values),/非标准 batch/);
+ writeFileSync(file,'@ECHO off\necho changed\nnode "%~dp0pi-launcher.js" %*');assert.throws(()=>spawnBin(file,values),/Nonstandard batch/);
 });
 test('managed pi CMD and PowerShell resolve the exact verified host and preserve argv', {skip:process.platform!=='win32'}, async()=>{
  const base=join(dir,'managed'),bin=join(base,'bin'),pkg=join(base,'install','releases','1.0.0','node_modules','@earendil-works','pi-coding-agent');
