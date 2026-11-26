@@ -88,7 +88,7 @@ test("antigravity: foreign AGENTS.md is never touched", () => {
 
 test("antigravity: empty persona is refused", () => {
 	withHome((dir) => {
-		assert.throws(() => installAntigravity(dir, { personaText: "   " }), /人设正文为空/);
+		assert.throws(() => installAntigravity(dir, { personaText: "   " }), /persona body is empty/);
 		assert.equal(existsSync(antigravityAgentsFile()), false);
 	});
 });
