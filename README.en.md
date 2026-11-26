@@ -8,7 +8,7 @@
 
 **One persona to govern multiple coding agents.**
 
-English | [日本語](README.ja.md) | [简体中文](README.md)
+English | [Japanese edition](README.ja.md) | [Main README](README.md)
 
 [![npm](https://img.shields.io/npm/v/agent-purge)](https://www.npmjs.com/package/agent-purge)
 [![stars](https://img.shields.io/github/stars/ZiChuanLan/agent-purge)](https://github.com/ZiChuanLan/agent-purge/stargazers)
