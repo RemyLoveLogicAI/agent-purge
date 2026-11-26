@@ -45,15 +45,15 @@ test('live owners are not recovered; competing process cannot overwrite journal'
  const pa = await owner(a), pb = await owner(b);
  assert.equal(recover(collect), 0); assert.equal(readFileSync(a, 'utf8'), 'temporary');
  const r = spawnSync(process.execPath, ['--input-type=module', '-e', `import {swapFile} from ${JSON.stringify(moduleUrl)};swapFile(${JSON.stringify(a)},'bad')`], { env: process.env, encoding: 'utf8' });
- assert.notEqual(r.status, 0); assert.match(r.stderr, /未结束的交换/);
+ assert.notEqual(r.status, 0); assert.match(r.stderr, /unfinished swap/);
  await kill(pa); assert.equal(recover(collect), 1); assert.equal(readFileSync(a, 'utf8'), 'original');
  assert.equal(readFileSync(b, 'utf8'), 'temporary'); await kill(pb); assert.equal(recover(collect), 1); assert.equal(existsSync(b), false);
 });
 test('user edits prevent undo; retained journal permits retry; corrupt receipt leaves file intact', () => {
  const f = join(dir, 'edited'); writeFileSync(f, 'before'); const undo = swapFile(f, 'after');
  const receipt = join(journalDir, journals()[0]), record = readFileSync(receipt);
- writeFileSync(f, 'user'); assert.throws(undo, /被修改/); assert.equal(readFileSync(f, 'utf8'), 'user');
- writeFileSync(receipt, '{bad'); assert.throws(undo, /无法读取恢复凭据/); assert.equal(readFileSync(f, 'utf8'), 'user');
+ writeFileSync(f, 'user'); assert.throws(undo, /changed after swap/); assert.equal(readFileSync(f, 'utf8'), 'user');
+ writeFileSync(receipt, '{bad'); assert.throws(undo, /Cannot read recovery credential/); assert.equal(readFileSync(f, 'utf8'), 'user');
  writeFileSync(receipt, record); writeFileSync(f, 'after'); undo(); undo(); assert.equal(readFileSync(f, 'utf8'), 'before');
 });
 test('dead owner with changed target and legacy receipts are conservative', async () => {
@@ -116,7 +116,7 @@ test('second session joins an identical swap but a different one still conflicts
  assert.equal(journals().length, 1);
  const undo = swapFile(f, 'temporary'); // 同内容：不加锁、不新增 journal
  assert.equal(journals().length, 1); undo();
- assert.throws(() => swapFile(f, 'other'), /持有者 PID \d+/);
+ assert.throws(() => swapFile(f, 'other'), /owner PID \d+/);
  await kill(pa); assert.equal(recover(collect), 1); assert.equal(readFileSync(f, 'utf8'), 'original');
 });
 test('dead owner is reclaimed once, then this swap proceeds', async () => {
@@ -129,7 +129,7 @@ test('dead owner is reclaimed once, then this swap proceeds', async () => {
 test('dead owner whose file was edited is not reclaimed', async () => {
  const f = join(dir, 'reclaim-edited'); writeFileSync(f, 'original');
  const pa = await owner(f); await kill(pa); writeFileSync(f, 'user edit');
- assert.throws(() => swapFile(f, 'next'), /无法回收/);
+ assert.throws(() => swapFile(f, 'next'), /Cannot recover/);
  assert.equal(readFileSync(f, 'utf8'), 'user edit');
  for (const name of journals()) rmSync(join(journalDir, name));
 });
