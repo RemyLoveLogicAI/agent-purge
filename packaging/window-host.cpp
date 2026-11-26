@@ -1,13 +1,13 @@
-// agent-purge 控制台的原生窗口宿主：用 WebView2 给控制台一扇真正属于本应用的窗口。
+// Native agent-purge console window host: WebView2 gives the console a window belonging to the application.
 //
-// 为什么不继续用 Chrome/Edge 的 --app 模式：那扇窗口是浏览器本体，浏览器首启会把系统里已登录的
-// Microsoft 账号关联进新 profile（实测 --disable-sync、--disable-features=ImplicitSignIn 都拦不住），
-// 用户看到的就是「一个本地工具在要 Microsoft 账号授权」。WebView2 没有首启、没有账号、没有同步，
-// 窗口图标与任务栏名称都是本应用的。
+// Why not use Chrome/Edge --app mode: the window belongs to the browser, whose first launch can associate the system’s signed-in
+// Microsoft account with the new profile (testing showed --disable-sync and --disable-features=ImplicitSignIn did not prevent it),
+// making a local tool appear to request Microsoft account authorization. WebView2 has no browser first-run, account or sync,
+// and the window icon and taskbar name belong to this application.
 //
-// 用法：agent-purge-window.exe <url> [--title T] [--width N] [--height N] [--data DIR] [--state FILE]
-//   --data   WebView2 用户数据目录（窗口尺寸以外的浏览器状态都放这里）
-//   --state  窗口位置/大小的记忆文件；没有就按 --width/--height 居中开
+// Usage: agent-purge-window.exe <url> [--title T] [--width N] [--height N] [--data DIR] [--state FILE]
+//   --data   WebView2 user data directory (browser state other than window size)
+//   --state  Saved window position/size; if absent, center using --width/--height
 #define UNICODE
 #include <windows.h>
 #include <shellapi.h>
@@ -36,8 +36,8 @@ struct InstallationActivity {
 	~InstallationActivity() { if (mutex) CloseHandle(mutex); }
 };
 
-// 高 DPI：动态取 Win10 的 SetProcessDpiAwarenessContext，mingw 的 user32 声明因 SDK 版本而异。
-// -4 就是 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2（头文件里不一定有这个名字）。
+// High DPI: dynamically load Windows 10 SetProcessDpiAwarenessContext; MinGW user32 declarations vary by SDK.
+// -4 is DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 (the header may not define that name).
 void EnableDpiAwareness() {
 	typedef BOOL (WINAPI* SetContextFn)(HANDLE);
 	HMODULE user32 = GetModuleHandleW(L"user32.dll");
@@ -46,23 +46,23 @@ void EnableDpiAwareness() {
 	SetProcessDPIAware();
 }
 
-// mingw 的 gcc 不认 MIDL 的 __declspec(uuid)，__uuidof 会变成未定义符号，所以 IID 写在这里；
-// scripts/build-window-host.mjs 会拿 WebView2.h 里的 MIDL_INTERFACE 字符串核对，SDK 升级漏改会构建失败。
+// MinGW gcc does not recognize MIDL __declspec(uuid), leaving __uuidof undefined, so define IIDs here;
+// scripts/build-window-host.mjs checks WebView2.h MIDL_INTERFACE strings so missed IID updates fail the build.
 const IID kEnvDoneIid = { 0x4e8a3389, 0xc9d8, 0x4bd2, { 0xb6, 0xb5, 0x12, 0x4f, 0xee, 0x6c, 0xc1, 0x4d } };
 const IID kControllerDoneIid = { 0x6c4819f3, 0xc9b7, 0x4260, { 0x81, 0x27, 0xc9, 0xf5, 0xbd, 0xe7, 0xf6, 0x8c } };
 const IID kController2Iid = { 0xc979903e, 0xd4ca, 0x4228, { 0x92, 0xeb, 0x47, 0xee, 0x3f, 0xa9, 0x6e, 0xab } };
 const IID kScriptDoneIid = { 0x49511172, 0xcc67, 0x4bca, { 0x99, 0x23, 0x13, 0x71, 0x12, 0xf4, 0xc4, 0xcc } };
 
-// 关窗前的两道判断：
-//   1. 有没有未保存的草稿 —— 只有页面知道，问一次（WebView2 不会自己跑 beforeunload）；
-//   2. 要不要确认 —— 文案由 Node 按设置页的「关闭窗口前先确认 / 关闭窗口时」给（--confirm-close），
-//      宿主只负责弹一个原生对话框，不依赖 WebView2 的脚本对话框。
+// Two checks before closing:
+//   1. Ask the page about unsaved drafts (WebView2 does not run beforeunload automatically);
+//   2. Whether to confirm: Node supplies text from the window-close settings (--confirm-close),
+//      and the host displays a native dialog without depending on WebView2 script dialogs.
 const wchar_t kDirtyScript[] = L"(window.__apDirty ? window.__apDirty() : false)";
-const wchar_t kDirtyText[] = L"还有未保存的设置或草稿，确定关闭吗？\r\nUnsaved settings or drafts. Close anyway?";
+const wchar_t kDirtyText[] = L"Unsaved settings or drafts. Close anyway?";
 std::wstring g_confirmText;
 bool g_closing = false;
 
-/** 只实现一个接口的 COM 回调；WebView2 只会 QueryInterface 到 IUnknown 和它自己。 */
+/** COM callback implementing one interface; WebView2 queries only IUnknown and that interface. */
 template <class T> class Once : public T {
 	LONG refs = 1;
 	const IID& iid;
@@ -106,7 +106,7 @@ void EnsureDir(const std::wstring& dir) {
 	CreateDirectoryW(dir.c_str(), nullptr);
 }
 
-/** 系统是深色主题时给窗口一个深色底，避免首屏白闪（页面自己会注入 data-theme）。 */
+/** Use a dark background with the system dark theme to prevent a white flash (the page injects data-theme). */
 bool SystemUsesDarkTheme() {
 	DWORD value = 1, size = sizeof(value);
 	HKEY key = nullptr;
@@ -131,7 +131,7 @@ void SaveWindowState() {
 	CloseHandle(file);
 }
 
-/** 上次的窗口位置；读不到就居中按默认尺寸开。 */
+/** Previous window position; center with default dimensions if unavailable. */
 bool LoadWindowState(RECT& rc, bool& maximized) {
 	maximized = false;
 	if (g_stateFile.empty()) return false;
@@ -145,7 +145,7 @@ bool LoadWindowState(RECT& rc, bool& maximized) {
 	int flag = 0;
 	if (swscanf_s(buffer, L"%ld %ld %ld %ld %d", &x, &y, &w, &h, &flag) != 5) return false;
 	if (w < 400 || h < 300) return false;
-	// 显示器换了/拔了：记忆的位置可能在屏幕外，那就当没有记忆，重新居中
+	// A changed or disconnected display can leave the saved position off-screen; ignore it and recenter.
 	RECT saved = { x, y, x + w, y + h };
 	if (MonitorFromRect(&saved, MONITOR_DEFAULTTONULL) == nullptr) return false;
 	rc = { x, y, x + w, y + h };
@@ -157,7 +157,7 @@ struct ControllerDone : Once<ICoreWebView2CreateCoreWebView2ControllerCompletedH
 	ControllerDone() : Once(kControllerDoneIid) {}
 	HRESULT STDMETHODCALLTYPE Invoke(HRESULT result, ICoreWebView2Controller* controller) override {
 		if (FAILED(result) || !controller) {
-			MessageBoxW(g_hwnd, L"WebView2 控制器创建失败。请更新 Microsoft Edge WebView2 Runtime 后重试。", L"agent-purge", MB_ICONERROR);
+			MessageBoxW(g_hwnd, L"Could not create the WebView2 controller. Update Microsoft Edge WebView2 Runtime and try again.", L"agent-purge", MB_ICONERROR);
 			return result;
 		}
 		g_controller = controller;
@@ -181,7 +181,7 @@ struct EnvDone : Once<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
 	EnvDone() : Once(kEnvDoneIid) {}
 	HRESULT STDMETHODCALLTYPE Invoke(HRESULT result, ICoreWebView2Environment* env) override {
 		if (FAILED(result) || !env) {
-			MessageBoxW(g_hwnd, L"WebView2 环境创建失败。请安装或修复 Microsoft Edge WebView2 Runtime 后重试。", L"agent-purge", MB_ICONERROR);
+			MessageBoxW(g_hwnd, L"Could not create the WebView2 environment. Install or repair Microsoft Edge WebView2 Runtime and try again.", L"agent-purge", MB_ICONERROR);
 			return result;
 		}
 		env->CreateCoreWebView2Controller(g_hwnd, new ControllerDone());
@@ -194,7 +194,7 @@ void CloseNow() {
 	DestroyWindow(g_hwnd);
 }
 
-/** 有未保存草稿就问草稿的事，否则按 --confirm-close 决定要不要弹确认；取消就把关窗请求放回去。 */
+/** Ask about unsaved drafts, otherwise use --confirm-close to decide whether to confirm; cancel returns the close request. */
 void AskThenClose(bool dirty) {
 	const std::wstring text = dirty ? std::wstring(kDirtyText) : g_confirmText;
 	if (text.empty() || MessageBoxW(g_hwnd, text.c_str(), L"agent-purge", MB_OKCANCEL | MB_ICONQUESTION) == IDOK) {
@@ -222,7 +222,7 @@ LRESULT CALLBACK Proc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
 		}
 		return 0;
 	case WM_CLOSE:
-		// 第二次点关闭不再等页面：页面卡死时也得能把窗口关掉
+		// A second close click does not wait for the page, allowing closure if the page hangs.
 		if (g_closing) { CloseNow(); return 0; }
 		g_closing = true;
 		if (g_webview && SUCCEEDED(g_webview->ExecuteScript(kDirtyScript, new DirtyScriptDone()))) return 0;
@@ -239,19 +239,19 @@ LRESULT CALLBACK Proc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
 	return DefWindowProcW(hwnd, message, wp, lp);
 }
 
-/** WebView2Loader.dll 从 exe 同目录加载：不链接导入库，SDK 只作为构建期头文件依赖。 */
+/** Load WebView2Loader.dll from the exe directory without linking an import library; SDK headers are a build-time dependency only. */
 HRESULT CreateEnvironment() {
 	typedef HRESULT (STDMETHODCALLTYPE *CreateEnvFn)(PCWSTR, PCWSTR, ICoreWebView2EnvironmentOptions*,
 		ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler*);
 	std::wstring loaderPath = ExeDir() + L"\\WebView2Loader.dll";
 	HMODULE loader = LoadLibraryW(loaderPath.c_str());
 	if (!loader) {
-		MessageBoxW(nullptr, L"缺少 WebView2Loader.dll：请重新安装 agent-purge，或改用浏览器窗口。", L"agent-purge", MB_ICONERROR);
+		MessageBoxW(nullptr, L"WebView2Loader.dll is missing. Reinstall agent-purge or use a browser window.", L"agent-purge", MB_ICONERROR);
 		return HRESULT_FROM_WIN32(ERROR_MOD_NOT_FOUND);
 	}
 	CreateEnvFn createEnv = (CreateEnvFn)GetProcAddress(loader, "CreateCoreWebView2EnvironmentWithOptions");
 	if (!createEnv) {
-		MessageBoxW(nullptr, L"WebView2Loader.dll 版本不对：缺少 CreateCoreWebView2EnvironmentWithOptions。", L"agent-purge", MB_ICONERROR);
+		MessageBoxW(nullptr, L"Incorrect WebView2Loader.dll version: CreateCoreWebView2EnvironmentWithOptions is missing.", L"agent-purge", MB_ICONERROR);
 		return E_FAIL;
 	}
 	EnsureDir(g_dataFolder);
@@ -307,7 +307,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show) {
 	g_hwnd = CreateWindowExW(0, kClass, g_title.c_str(), WS_OVERLAPPEDWINDOW,
 		rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, instance, nullptr);
 	if (!g_hwnd) return 1;
-	// 不跟随 WinMain 的 nCmdShow：启动器用 SW_HIDE 拉起 Node，隐藏状态会一路继承下来（issue #9 同类问题）。
+	// Do not follow WinMain nCmdShow: the launcher starts Node with SW_HIDE, which would otherwise be inherited (issue #9).
 	ShowWindow(g_hwnd, maximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
 	SetForegroundWindow(g_hwnd);
 	UpdateWindow(g_hwnd);
