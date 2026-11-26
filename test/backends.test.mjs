@@ -1,5 +1,5 @@
 import { isolate } from "./isolate.mjs";
-// hermes 交互式启动：SOUL.md 写入 → 退出还原；--ignore-rules 不能丢（丢了自带 rules 会顶回人设）。
+// Hermes interactive launch: write SOUL.md → restore on exit; retain --ignore-rules or built-in rules override the persona.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -12,8 +12,8 @@ const data = join(dir, "data");
 mkdirSync(join(home, "hermes"), { recursive: true });
 const soul = join(home, "hermes", "SOUL.md");
 const persona = join(dir, "persona.md");
-writeFileSync(persona, "你是 pi，不是 Hermes。\n");
-const original = "原始人设：我是 Hermes\n";
+writeFileSync(persona, "\u4f60\u662f pi，\u4e0d\u662f Hermes。\n");
+const original = "\u539f\u59cb\u4eba\u8bbe：\u6211\u662f Hermes\n";
 writeFileSync(soul, original);
 
 const saved = { ...process.env };
@@ -30,7 +30,7 @@ const { setArmed } = await import("../lib/state.mjs");
 
 const spec = (mode, args = []) => backends.hermes({ personaPath: persona, mode, args, root: data });
 
-test("hermes 启动参数带 --ignore-rules，off 模式不加也不写文件", () => {
+test("Hermes launch includes --ignore-rules; off mode neither adds it nor writes files", () => {
 	assert.deepEqual(spec("replace", ["--resume"]).args, ["--ignore-rules", "--resume"]);
 	const off = spec("off", ["-x"]);
 	assert.deepEqual(off.args, ["-x"]);
@@ -39,24 +39,24 @@ test("hermes 启动参数带 --ignore-rules，off 模式不加也不写文件", 
 	assert.equal(readFileSync(soul, "utf8"), original);
 });
 
-test("setup 写 SOUL.md，cleanup 还原到安装前的字节", () => {
+test("setup writes SOUL.md and cleanup restores pre-installation bytes", () => {
 	const s = spec("replace");
 	s.setup();
-	assert.match(readFileSync(soul, "utf8"), /你是 pi，不是 Hermes。/);
+	assert.match(readFileSync(soul, "utf8"), /\u4f60\u662f pi，\u4e0d\u662f Hermes。/);
 	s.cleanup();
 	assert.equal(readFileSync(soul, "utf8"), original);
 });
 
-test("常驻已选择时临时启动退出也恢复原字节，不把临时人设留在全局", () => {
+test("Temporary launch restores original bytes on exit even with persistent selection, without leaving the temporary persona globally", () => {
 	setArmed(data, "hermes", "install", true);
 	const s = spec("replace");
 	s.setup();
-	assert.match(readFileSync(soul, "utf8"), /你是 pi，不是 Hermes。/);
+	assert.match(readFileSync(soul, "utf8"), /\u4f60\u662f pi，\u4e0d\u662f Hermes。/);
 	s.cleanup();
 	assert.equal(readFileSync(soul, "utf8"), original);
 	setArmed(data, "hermes", "install", false);
 });
-test("hermes --ask 使用同一份临时 SOUL 生命周期", () => {
+test("Hermes --ask uses the same temporary SOUL lifecycle", () => {
 	const s = oneshots.hermes({ prompt: 'QUESTION', personaText: 'ASK_PERSONA', mode: 'append' });
 	assert.deepEqual(s.args, ['--ignore-rules', '-z', 'QUESTION']);
 	s.setup(); assert.equal(readFileSync(soul, 'utf8'), original + '\n\nASK_PERSONA');
