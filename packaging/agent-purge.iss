@@ -41,7 +41,7 @@ Name: "{userdesktop}\{#AppName}"; Filename: "{app}\agent-purge.exe"; Parameters:
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\agent-purge.exe"; Parameters: "web --desktop"; Description: "启动 {#AppName} 桌面Desktop client"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\agent-purge.exe"; Parameters: "web --desktop"; Description: "Launch {#AppName} desktop client"; Flags: postinstall nowait skipifsilent
 
 [Messages]
 ; Uninstall also reverts changes in shared data, not just program files; the confirmation explains this.
