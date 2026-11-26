@@ -139,7 +139,7 @@ test('a native host that dies leaves a log and reports why, instead of failing s
   assert.match(errors[0], /0xC0000135/);
   const log = readFileSync(nativeWindowLogPath(home), 'utf8');
   assert.match(log, /exit 3221225781 \(0xc0000135\)/);
-  assert.match(log, /缺少运行库/);
+  assert.match(log, /Missing runtime library/);
   assert.equal(nativeExitHint(0), '');
 });
 
