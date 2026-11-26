@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { installWorkbuddyPrompt, uninstallWorkbuddyPrompt, workbuddySettingsFile } from '../lib/workbuddy.mjs';
 
-console.log('=== WorkBuddy 身份上下文注入验证（隔离 settings 副本） ===');
+console.log('=== WorkBuddy identity-context injection verification (isolated settings copy) ===');
 const originalHome = process.env.WORKBUDDY_CONFIG_DIR;
 const originalData = process.env.AGENT_PURGE_HOME;
 const dir = mkdtempSync(join(tmpdir(), 'ap-workbuddy-settings-'));
@@ -22,14 +22,14 @@ try {
 	console.log(`[1] install: ${installed.status} (${installed.chars} chars)`);
 	const prompt = JSON.parse(readFileSync(file, 'utf8')).personalization?.customPrompt ?? '';
 	if (!prompt.includes(marker) || !prompt.includes('# >>> agent-purge:workbuddy')) {
-		throw new Error('断言失败：settings.json customPrompt 未包含托管块或 marker');
+		throw new Error('Assertion failed: settings.json customPrompt lacks the managed block or marker');
 	}
-	console.log('✓ settings.json customPrompt 已写入身份上下文');
+	console.log('✓ Identity context written to settings.json customPrompt');
 
 	const restored = uninstallWorkbuddyPrompt(data);
 	const after = JSON.parse(readFileSync(file, 'utf8')).personalization?.customPrompt ?? null;
-	if (after !== 'keep me') throw new Error(`致命错误：customPrompt 未恢复为原值（${after}）`);
-	console.log(`[2] uninstall: ${restored.status}; customPrompt 原值已恢复`);
+	if (after !== 'keep me') throw new Error(`Fatal error: customPrompt was not restored to its original value (${after})`);
+	console.log(`[2] uninstall: ${restored.status}; customPrompt original value restored`);
 } finally {
 	if (originalHome === undefined) delete process.env.WORKBUDDY_CONFIG_DIR;
 	else process.env.WORKBUDDY_CONFIG_DIR = originalHome;
@@ -38,4 +38,4 @@ try {
 	rmSync(dir, { recursive: true, force: true });
 	rmSync(data, { recursive: true, force: true });
 }
-console.log('\n=== WorkBuddy settings 身份上下文接管实测通过；模型回复需在桌面端新任务确认 ===');
+console.log('\n=== WorkBuddy settings identity-context takeover verified; confirm model response in a new desktop task ===');
