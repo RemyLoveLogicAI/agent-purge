@@ -12,27 +12,27 @@ const sandbox = (t) => {
 	return root;
 };
 
-test("isolatedEnv: 在 Electron 内嵌 node 下透传 ELECTRON_RUN_AS_NODE", (t) => {
-	// process.execPath 是 Electron helper 时，子进程缺这个变量会以退出码 64 拒绝启动，
-	// 测试里的所有 CLI 子进程（plus 真实宿主抓包）会一起塌。
+test("isolatedEnv: passes ELECTRON_RUN_AS_NODE through under Electron embedded Node", (t) => {
+	// When process.execPath is an Electron helper, child processes without this variable fail to start with exit code 64,
+	// breaking all CLI subprocesses in tests and real host captures.
 	const root = sandbox(t);
 	const env = isolatedEnv(root, { PATH: "/usr/bin" });
-	assert.equal(env.ELECTRON_RUN_AS_NODE, undefined, "纯 node 环境不该凭空造出这个变量");
+	assert.equal(env.ELECTRON_RUN_AS_NODE, undefined, "A plain Node environment must not invent this variable");
 
 	const electron = isolatedEnv(root, { PATH: "/usr/bin", ELECTRON_RUN_AS_NODE: "1" });
 	assert.equal(electron.ELECTRON_RUN_AS_NODE, "1");
-	// 透传不等于放行其它变量：隔离边界仍然只认白名单
+	// Passing this through does not admit other variables: isolation still uses an allowlist.
 	assert.equal(isolatedEnv(root, { ELECTRON_RUN_AS_NODE: "1", SECRET_TOKEN: "x" }).SECRET_TOKEN, undefined);
 });
 
-test("isolatedEnv: HOME 仍被改到沙盒，不泄漏真实用户目录", (t) => {
+test("isolatedEnv: HOME is still redirected to the sandbox without leaking the real user directory", (t) => {
 	const root = sandbox(t);
 	const env = isolatedEnv(root, { HOME: "/real/home", ELECTRON_RUN_AS_NODE: "1" });
 	assert.equal(env.HOME, join(root, "home"));
 	assert.equal(env.USERPROFILE, join(root, "home"));
 });
 
-test("defaultSources: AGENT_PURGE_APP_DIRS 能顶掉 macOS 的 /Applications", (t) => {
+test("defaultSources: AGENT_PURGE_APP_DIRS can override macOS /Applications", (t) => {
 	const root = sandbox(t);
 	const saved = process.env.AGENT_PURGE_APP_DIRS;
 	t.after(() => {
@@ -41,7 +41,7 @@ test("defaultSources: AGENT_PURGE_APP_DIRS 能顶掉 macOS 的 /Applications", (
 	});
 
 	delete process.env.AGENT_PURGE_APP_DIRS;
-	assert.equal(defaultSources(root).appDirs, undefined, "没设覆盖时交给平台默认");
+	assert.equal(defaultSources(root).appDirs, undefined, "Use the platform default when no override is set");
 
 	process.env.AGENT_PURGE_APP_DIRS = `${join(root, "A")}; ${join(root, "B")};`;
 	assert.deepEqual(defaultSources(root).appDirs, [join(root, "A"), join(root, "B")]);

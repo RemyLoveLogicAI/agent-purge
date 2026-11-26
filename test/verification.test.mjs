@@ -1,5 +1,5 @@
 import "./isolate.mjs";
-// 实测证据只认抓包报告：文档常量不算确认，请求里有 marker 但没进 system/developer 也不算。
+// Verification evidence requires a capture report: documentation constants do not count, nor does a marker outside the system/developer role.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -21,7 +21,7 @@ function withRoot(fn) {
 	}
 }
 
-test("sysHit 只认 system/developer 角色层里的人设命中", () => {
+test("sysHit recognizes persona hits only in the system/developer role", () => {
 	assert.equal(sysHit({ modes: [mode(["system"], 1)] }), true);
 	assert.equal(sysHit({ modes: [mode(["developer"], 2)] }), true);
 	assert.equal(sysHit({ modes: [mode(["user"], 3)] }), false);
@@ -30,13 +30,13 @@ test("sysHit 只认 system/developer 角色层里的人设命中", () => {
 	assert.equal(sysHit(undefined), false);
 });
 
-test("verifiedHarnesses 没有报告时返回空集合，不乐观假设", () => {
+test("verifiedHarnesses returns an empty set when no report exists, without optimistic assumptions", () => {
 	withRoot((root) => {
 		assert.equal(verifiedHarnesses(root).size, 0);
 	});
 });
 
-test("verifiedHarnesses 只收实测命中的 harness，user-only 命中被排除", () => {
+test("verifiedHarnesses includes only captured hits, excluding user-only hits", () => {
 	withRoot((root) => {
 		writeFileSync(verificationFile(root), JSON.stringify(report([
 			{ harness: "pi", status: "captured", modes: [mode(["system"], 1)] },
@@ -48,13 +48,13 @@ test("verifiedHarnesses 只收实测命中的 harness，user-only 命中被排�
 	});
 });
 
-test("报告损坏时按未实测处理，不抛给调用方", () => {
+test("Corrupt reports are treated as untested without throwing to the caller", () => {
 	withRoot((root) => {
 		writeFileSync(verificationFile(root), "{ not json");
 		assert.equal(verifiedHarnesses(root).size, 0);
 	});
 });
-test("证据状态区分未捕获、启动失败、暂停通过、真正未命中与隔离命中", () => {
+test("Evidence states distinguish no capture, startup failure, paused success, actual miss and isolated hit", () => {
 	assert.equal(verificationEvidence(null).label, "Not tested");
 	assert.equal(verificationEvidence({ status: "missing" }).label, "Entry point not found");
 	assert.equal(verificationEvidence({ status: "blocked" }).label, "Verification blocked");
@@ -69,12 +69,12 @@ test("证据状态区分未捕获、启动失败、暂停通过、真正未命�
 	assert.equal(verificationEvidence({ status: "captured", modes: [mode(["system"], 1)] }).runtimeConfirmed, false);
 	assert.equal(verificationEvidence({ status: "captured", modes: [{ ...mode(["system"], 1), requests: [
 		{ kind: "main", roles: ["system"], markerCount: 1 }, { kind: "auxiliary", roles: ["system"], markerCount: 0 },
-	] }] }).state, "verified", "标题等辅助请求不得改变主请求判定");
+	] }] }).state, "verified", "Auxiliary requests such as title generation must not alter the main request verdict");
 	assert.equal(sysHit({ modes: [{ requests: [{ kind: "auxiliary", roles: ["system"], markerCount: 1 }] }] }), false);
 	assert.match(captureScopeLabel({ kind: "isolated-cli", profile: "headless" }), /Isolated CLI.*headless/);
 	assert.match(captureScopeLabel(null), /entry point not recorded/);
 });
-test("失败进程或暂停捕获不能被登记为人设能力已验证", () => {
+test("A failed process or paused capture cannot be recorded as verified persona support", () => {
 	withRoot(root => {
 		writeFileSync(verificationFile(root), JSON.stringify(report([
 			{ harness: "dsh", status: "error", modes: [mode(["system"], 1)] },
