@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 只生成独立运行时产物；安装器始终由 build:setup 从经过核验的瘦包单独生成。
+// Build only a standalone runtime artifact; build:setup separately generates the installer from the verified thin package.
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -16,9 +16,9 @@ const targets = {win32:'windows',darwin:'darwin',linux:'linux'};
 const target = `bun-${targets[process.platform]}-${process.arch}`;
 const assets = ['matrix.json','package.json','lib/evidence.mjs','web/ui.html','web/app.js','web/model.mjs','web/i18n.mjs','web/styles.css',...listFiles(join(ROOT,'web/assets')).map(file=>`web/assets/${file}`),...listFiles(join(ROOT,'lib/templates/personas')).map(file=>`lib/templates/personas/${file}`)];
 const duplicates = assets.map(file=>file.split('/').pop()).filter((file,index,all)=>all.indexOf(file)!==index);
-if (duplicates.length) throw new Error('内嵌资源重名：'+duplicates.join(', '));
+if (duplicates.length) throw new Error('Duplicate embedded resource names: '+duplicates.join(', '));
 const bun = captureBin('bun',['--version']);
-if (!bun) throw new Error('构建独立产物需要 Bun，请先安装 Bun');
+if (!bun) throw new Error('Bun is required to build standalone artifacts; install Bun first');
 console.log(`Bun ${bun.trim()} -> ${target}`);
 mkdirSync(DIST,{recursive:true});
 const buildTemp = mkdtempSync(join(tmpdir(),'ap-compile-'));
@@ -34,9 +34,9 @@ try {
     const child=spawnBin('bun',args,{cwd:ROOT,env:{...process.env,TEMP:buildTemp,TMP:buildTemp},stdio:'inherit'});
     child.once('error',reject);child.once('close',resolve);
   });
-  if (code!==0 || !existsSync(EXE)) throw new Error('bun build --compile 失败');
+  if (code!==0 || !existsSync(EXE)) throw new Error('bun build --compile failed');
   await smoke(EXE,[],{cwd:DIST,version,serve:!process.argv.includes('--no-serve-check')});
   writeFileSync(join(DIST,'standalone-manifest.json'),JSON.stringify({schema:1,flavor:'standalone',version,target,file:EXE.split(/[\\/]/).pop(),sha256:hashFile(EXE),assets:Object.fromEntries(assets.map(file=>[file,hashFile(join(ROOT,file))]))},null,2)+'\n');
-  console.log(`独立产物：${EXE} (${(statSync(EXE).size/1048576).toFixed(1)} MB)`);
-  console.log('未自动生成安装器；build:setup 会单独构建、核验并打包 Node 瘦包。');
+  console.log(`Standalone artifact: ${EXE} (${(statSync(EXE).size/1048576).toFixed(1)} MB)`);
+  console.log('No installer was generated automatically; build:setup separately builds, verifies, and packages the Node thin package.');
 } finally { rmSync(ENTRY,{force:true});rmSync(buildTemp,{recursive:true,force:true,maxRetries:5,retryDelay:100}); }

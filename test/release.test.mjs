@@ -22,10 +22,10 @@ test('thin manifest detects changed source, changed payload, extra files and wro
     const allowed=runtimeFiles(src);assert.equal(allowed.some(file=>/shots|private/.test(file)),false);
     for(const file of allowed){mkdirSync(dirname(join(out,file)),{recursive:true});copyFileSync(join(src,file),join(out,file));}
     writeManifest(out,'thin','1.2.3',src);assert.equal(validateThin(out,src).version,'1.2.3');
-    writeFileSync(join(src,'lib/core.mjs'),'changed');assert.throws(()=>validateThin(out,src),/源码不一致/);writeFileSync(join(src,'lib/core.mjs'),'lib/core.mjs');
-    writeFileSync(join(out,'README.md'),'edited');assert.throws(()=>validateThin(out,src),/文件已改变/);writeFileSync(join(out,'README.md'),'README.md');
-    writeFileSync(join(out,'extra'),'extra');assert.throws(()=>validateThin(out,src),/文件清单已改变/);rmSync(join(out,'extra'));
-    writeManifest(out,'standalone','1.2.3',src);assert.throws(()=>validateThin(out,src),/manifest\/版本不匹配/);
+    writeFileSync(join(src,'lib/core.mjs'),'changed');assert.throws(()=>validateThin(out,src),/sources differ/);writeFileSync(join(src,'lib/core.mjs'),'lib/core.mjs');
+    writeFileSync(join(out,'README.md'),'edited');assert.throws(()=>validateThin(out,src),/file changed/);writeFileSync(join(out,'README.md'),'README.md');
+    writeFileSync(join(out,'extra'),'extra');assert.throws(()=>validateThin(out,src),/file list changed/);rmSync(join(out,'extra'));
+    writeManifest(out,'standalone','1.2.3',src);assert.throws(()=>validateThin(out,src),/manifest or version mismatch/);
   } finally { rmSync(root,{recursive:true,force:true}); }
 });
 test('npm package includes all runtime files', () => {
@@ -33,10 +33,10 @@ test('npm package includes all runtime files', () => {
   assert.equal(result.status,0,result.stderr);
   const entries=JSON.parse(result.stdout)[0].files;
   const packed=new Set(entries.map(file=>file.path));
-  assert.ok(packed.has('lib/templates/personas/neutral.md'), '新安装必须包含起步模板');
-  for (const file of packed) assert.doesNotMatch(file, /^(?:personas|out|dist|\.tmp|\.pi)\//, '私人数据不得进入 npm 包');
+  assert.ok(packed.has('lib/templates/personas/neutral.md'), 'Fresh installations must include the starter template');
+  for (const file of packed) assert.doesNotMatch(file, /^(?:personas|out|dist|\.tmp|\.pi)\//, 'Private data must not enter the npm package');
   for (const file of entries) assert.equal(publicationProblem(file.path, { distribution: true, size: file.size }), null, file.path);
-  assert.deepEqual(checkDocumentationLinks([...packed]), [], '打包后的文档不能链接到未随包分发的文件');
+  assert.deepEqual(checkDocumentationLinks([...packed]), [], 'Packaged documentation must not link to files omitted from the package');
   const missing=runtimeFiles(resolve('.')).filter(file=>!packed.has(file.replaceAll('\\','/')));
   assert.deepEqual(missing,[]);
 });
