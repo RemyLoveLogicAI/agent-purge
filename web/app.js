@@ -1701,15 +1701,15 @@ function showUpdateDialog(res) {
   const gitBehind = Number(res.git?.behind) || 0;
   const sameVersion = !res.latest || res.latest === res.current;
   $('update-latest-tag').textContent = sameVersion && gitBehind
-    ? pick(`上游 ${gitBehind} 个新提交`, `${gitBehind} upstream commit(s)`)
+    ? `${gitBehind} upstream commit(s)`
     : t('update.latestTag', { version: res.latest });
   const sources = [];
   if (res.npm?.ok && res.npm?.latest === res.latest) sources.push('npm');
   if (res.github?.ok && res.github?.latest === res.latest) sources.push('GitHub');
   if (res.installType === 'git') sources.push('git');
-  $('update-source-label').textContent = sources.length ? pick(`来源 ${sources.join(' / ')}`, `via ${sources.join(' / ')}`) : '';
+  $('update-source-label').textContent = sources.length ? `via ${sources.join(' / ')}` : '';
   const changelog = (res.github?.body || res.body || '').trim();
-  $('update-changelog-text').textContent = changelog || pick('暂无详细发布说明。', 'No release notes available.');
+  $('update-changelog-text').textContent = changelog || 'No release notes available.';
   $('update-changelog-box').hidden = !changelog;
 
   const type = res.installType || (res.isExe ? 'exe' : 'npm');
@@ -1718,21 +1718,21 @@ function showUpdateDialog(res) {
   const statusEl = $('update-status');
   statusEl.hidden = true; statusEl.textContent = ''; statusEl.className = 'status-box';
   if (type === 'exe') {
-    cmdBox.hidden = true; doBtn.textContent = pick('一键就地升级', 'Upgrade in Place'); doBtn.title = pick('自动下载新版 EXE 并热替换', 'Download and replace executable automatically');
+    cmdBox.hidden = true; doBtn.textContent = 'Upgrade in Place'; doBtn.title = 'Download and replace executable automatically';
   } else if (type === 'git') {
     cmdBox.hidden = false; $('update-command-text').textContent = 'git pull --ff-only';
-    doBtn.textContent = pick('一键 git 更新', 'Git Pull Now'); doBtn.title = pick('在安装目录执行 git pull --ff-only', 'Run git pull --ff-only in install directory');
+    doBtn.textContent = 'Git Pull Now'; doBtn.title = 'Run git pull --ff-only in install directory';
     const git = res.git || {};
     if (git.dirty) {
       statusEl.hidden = false; statusEl.className = 'status-box error';
-      statusEl.textContent = pick(`工作区有 ${git.dirty} 处未提交改动：先提交或撤销，更新会拒绝执行。`, `Working tree has ${git.dirty} uncommitted change(s); commit or discard before updating.`);
+      statusEl.textContent = `Working tree has ${git.dirty} uncommitted change(s); commit or discard before updating.`;
     } else if (git.branch) {
       statusEl.hidden = false;
-      statusEl.textContent = pick(`当前分支 ${git.branch}${git.upstream ? ` → ${git.upstream}` : '（没有上游）'}；更新只做快进合并。`, `Branch ${git.branch}${git.upstream ? ` → ${git.upstream}` : ' (no upstream)'}; fast-forward only.`);
+      statusEl.textContent = `Branch ${git.branch}${git.upstream ? ` → ${git.upstream}` : ' (no upstream)'}; fast-forward only.`;
     }
   } else {
     cmdBox.hidden = false; $('update-command-text').textContent = res.npm?.command || 'npm install -g agent-purge@latest';
-    doBtn.textContent = pick('一键 npm 升级', 'Upgrade via npm'); doBtn.title = pick('后台调用 npm 全局更新', 'Run global npm update in background');
+    doBtn.textContent = 'Upgrade via npm'; doBtn.title = 'Run global npm update in background';
   }
   doBtn.disabled = false;
   const ghLink = $('update-github-link');
@@ -1746,8 +1746,8 @@ async function checkAppUpdate(force = false) {
   try {
     const res = await api(`update${force ? '?force=1' : ''}`);
     if (!res.ok) {
-      vb.textContent = `v${res.current || state?.version || pick('未知', 'unknown')}`;
-      if (force) notify(pick(`检查更新失败：${res.error || '网络异常'}`, `Update check failed: ${res.error || 'network error'}`), 'warn');
+      vb.textContent = `v${res.current || state?.version || 'unknown'}`;
+      if (force) notify(`Update check failed: ${res.error || 'network error'}`, 'warn');
       return;
     }
     cachedUpdateInfo = res;
@@ -1756,15 +1756,15 @@ async function checkAppUpdate(force = false) {
     const versionAhead = res.latest && res.latest !== res.current;
     if (res.hasUpdate) {
       vb.className = 'version is-new';
-      vb.textContent = versionAhead ? `v${res.current} → v${res.latest}` : pick(`v${res.current} · 上游 ${behind} 个新提交`, `v${res.current} · ${behind} new commit(s)`);
-      vb.title = versionAhead ? pick(`有新版本 v${res.latest}，点击查看并升级`, `New version v${res.latest} available; click to upgrade`) : pick(`上游有 ${behind} 个新提交，点击一键 git 更新`, `${behind} new upstream commit(s); click to pull`);
+      vb.textContent = versionAhead ? `v${res.current} → v${res.latest}` : `v${res.current} · ${behind} new commit(s)`;
+      vb.title = versionAhead ? `New version v${res.latest} available; click to upgrade` : `${behind} new upstream commit(s); click to pull`;
       if (force) showUpdateDialog(res);
     } else {
       vb.className = 'version';
-      vb.title = pick(`v${res.current} 已是最新，点击重新检查`, `v${res.current} is up to date; click to re-check`);
-      if (force) notify(pick(`已是最新版本 v${res.current}。`, `Already on latest version v${res.current}.`), 'good');
+      vb.title = `v${res.current} is up to date; click to re-check`;
+      if (force) notify(`Already on latest version v${res.current}.`, 'good');
     }
-  } catch { /* 离线或后台探测失败不阻碍主界面 */ }
+  } catch { /* Offline or background probe failure must not block the main UI. */ }
 }
 
 $('version-badge')?.addEventListener('click', () => {
@@ -1775,34 +1775,34 @@ $('close-update')?.addEventListener('click', () => $('update-dialog')?.close());
 $('dismiss-update')?.addEventListener('click', () => $('update-dialog')?.close());
 $('copy-update-command')?.addEventListener('click', () => {
   const cmd = $('update-command-text')?.textContent;
-  if (cmd) navigator.clipboard?.writeText(cmd).then(() => notify(pick('升级命令已复制。', 'Upgrade command copied.'), 'good')).catch(() => {});
+  if (cmd) navigator.clipboard?.writeText(cmd).then(() => notify('Upgrade command copied.', 'good')).catch(() => {});
 });
 $('btn-do-upgrade')?.addEventListener('click', async () => {
   if (!cachedUpdateInfo) return;
   const doBtn = $('btn-do-upgrade');
   const statusEl = $('update-status');
   const type = cachedUpdateInfo.installType || (cachedUpdateInfo.isExe ? 'exe' : 'npm');
-  const busyText = type === 'exe' ? pick('正在下载替换…', 'Downloading…') : type === 'git' ? pick('正在 git pull…', 'Running git pull…') : pick('正在 npm 升级…', 'Updating via npm…');
-  const waitText = type === 'exe' ? pick('正在下载新版并热替换，请稍候…', 'Downloading new version and replacing executable…') : type === 'git' ? pick('正在安装目录执行 git pull --ff-only…', 'Running git pull --ff-only in install directory…') : pick('正在调用 npm 全局更新，可能需要十几秒…', 'Running global npm update; this may take a few seconds…');
-  const retryText = type === 'exe' ? pick('重试就地升级', 'Retry Upgrade') : type === 'git' ? pick('重试 git 更新', 'Retry git pull') : pick('重试 npm 升级', 'Retry npm update');
+  const busyText = type === 'exe' ? 'Downloading…' : type === 'git' ? 'Running git pull…' : 'Updating via npm…';
+  const waitText = type === 'exe' ? 'Downloading new version and replacing executable…' : type === 'git' ? 'Running git pull --ff-only in install directory…' : 'Running global npm update; this may take a few seconds…';
+  const retryText = type === 'exe' ? 'Retry Upgrade' : type === 'git' ? 'Retry git pull' : 'Retry npm update';
   doBtn.disabled = true; doBtn.textContent = busyText;
   statusEl.hidden = false; statusEl.className = 'status-box'; statusEl.textContent = waitText;
   try {
     const res = await api('update-upgrade', { type });
     if (res.ok) {
       statusEl.className = 'status-box success';
-      statusEl.textContent = res.message || pick('升级成功。', 'Upgrade complete.');
-      doBtn.textContent = pick('升级完成', 'Upgraded');
-      notify(res.message || pick('升级成功。', 'Upgrade complete.'), 'good');
+      statusEl.textContent = res.message || 'Upgrade complete.';
+      doBtn.textContent = 'Upgraded';
+      notify(res.message || 'Upgrade complete.', 'good');
       setTimeout(() => { $('update-dialog')?.close(); checkAppUpdate(true); }, 2500);
     } else {
       statusEl.className = 'status-box error';
-      statusEl.textContent = `${res.error || pick('更新失败', 'Update failed')}${res.output ? `\n${res.output}` : ''}`;
+      statusEl.textContent = `${res.error || 'Update failed'}${res.output ? `\n${res.output}` : ''}`;
       doBtn.disabled = false; doBtn.textContent = retryText;
     }
   } catch (err) {
     statusEl.className = 'status-box error';
-    statusEl.textContent = err.message || pick('网络请求异常', 'Network request failed');
+    statusEl.textContent = err.message || 'Network request failed';
     doBtn.disabled = false; doBtn.textContent = retryText;
   }
 });
