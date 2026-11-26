@@ -1,6 +1,4 @@
-/* 人设页样式。颜色全部取自 bridge 设的 --magpie-*，所以深浅色与 magpie 窗口一致；
-   沙箱页只能加载自己的文件，这里不引任何外部字体或图片。bridge 的基础样式是零权重
-   （:where()），所以下面每条规则都会生效。 */
+/* Persona page styles use bridge --magpie-* colors and no external fonts or images. Bridge base styles use :where(), so these rules take precedence. */
 :root {
 	color-scheme: light dark;
 	--fg: var(--magpie-fg, CanvasText);
@@ -286,7 +284,7 @@ select {
 	color: var(--muted);
 }
 
-/* 导入区：收在 <details> 里，不抢「点一个就换」的主操作 */
+/* Import section stays in <details> to keep persona switching primary. */
 .import {
 	margin-top: 12px;
 	border: 1px solid var(--line);

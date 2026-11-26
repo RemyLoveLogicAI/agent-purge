@@ -1,23 +1,15 @@
-// agent-purge × magpie —— 网关层人设注入。
-//
-// 这是 magpie 的异步 gateway request hook（Bun，每请求一次）。挂上之后，凡是经过 magpie
-// 网关的 agent 请求（Claude Code、Codex、OpenCode、pi…），system 段都按 agent-purge 的
-// 当前人设与模式改写。人设与模式直接读 agent-purge 的数据目录：在 agent-purge 里换人设，
-// 下一个请求就换，不用重装插件（不用重启 magpie）。
-//
-// 模式与 agent-purge 一致：
-//   off      不动请求
-//   strict   整段 system 换成人设（最干净；工具说明也一起没了，harness 可能变笨）
-//   append   人设挂在最前，宿主 system 原样保留
-//   replace  人设挂在最前 + 宿主 system 里报名字的句子删掉（近似；网关手里只有文本，
-//            没有各家启动参数，比不上 agent-purge 那套 per-harness 处理，想要干净就用 strict）
-//
-// 选项（magpie plugin options agent-purge '{"mode":"append"}'）：
-//   mode     覆盖启用状态下的模式；总暂停/分家停用始终优先
-//   persona  用哪个人设 id（默认 state.json 的当前人设）
-//   agents   只对这些 magpie agent 生效，如 ["claude","codex"]；不给 = 全部
-//   disabledAgents 排除这些 magpie agent，如 ["claude"]；优先级高于 agents
-//   inlinePersonas  页面导入的人设 [{id,name,text}]；和 personas/<id>.md 同名时以它为准
+// agent-purge × magpie: gateway-level persona injection.
+// This asynchronous hook runs once per gateway request in Bun. It rewrites the system
+// section using agent-purge's current persona and mode; changes apply on the next request.
+// off leaves requests unchanged; strict replaces the system prompt including tool instructions;
+// append prepends the persona while preserving the host prompt; replace prepends the persona
+// and approximately removes identity lines. For a cleaner result use strict, since the
+// gateway lacks per-harness launch arguments.
+// Options: mode overrides the active mode, subject to global and per-host pause; persona
+// selects an ID (default state.json); agents is an allowlist (default all); disabledAgents
+// takes precedence; inlinePersonas [{id,name,text}] override personas/<id>.md by ID.
+// Example: magpie plugin options agent-purge '{"mode":"append"}'
+
 import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve as abs } from "node:path";
@@ -31,10 +23,10 @@ function dataHome() {
 	return isAbsolute(env) ? env : abs(env);
 }
 
-/** frontmatter 绝不能进 prompt（agent-purge 落盘时也是这么剥的） */
+/** Frontmatter must never enter the prompt (agent-purge strips it on disk too). */
 const stripFront = (raw) => String(raw).replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
 
-// 每个请求只有 1 秒预算，所以只在 state.json / 人设文件的 mtime 变了才读盘。
+// Each request has a one-second budget, so reread only when state.json or persona file mtime changes.
 let cache = { key: "", value: { mode: "off", text: "" } };
 
 const validId = id => typeof id === 'string' && id.length <= 64 && /^[a-zA-Z0-9_][a-zA-Z0-9._-]*$/.test(id) && !id.includes('..');
@@ -45,7 +37,7 @@ function current(personaId, inline = [], agent) {
 	try {
 		sst = statSync(stateFile);
 	} catch {
-		/* 没装过 agent-purge：按 off 处理 */
+		/* If agent-purge was never installed, treat it as off. */
 	}
 
 	let mode = "off";
@@ -66,10 +58,10 @@ function current(personaId, inline = [], agent) {
 
 	const id = personaId || active;
 	if (!validId(id)) return { mode, text: "", bound };
-	// 页面导入的人设存在 options 里：命中就不读盘（每个请求只有 1 秒预算）
+	// Page imports are stored in options; if found, do not read disk (one-second request budget).
 	const hit = inline.find((p) => p && typeof p === "object" && p.id === id && typeof p.text === "string" && p.text.trim());
 	if (hit) return { mode, text: stripFront(hit.text), bound };
-	// 没有 state.json 的独立插件只接受显式导入的人设，不借磁盘残留自动启用。
+	// Without state.json, the standalone plugin accepts only explicitly imported personas and never activates from leftovers.
 	if (!bound) return { mode: 'off', text: '' };
 	const file = join(home, "personas", `${id}.md`);
 	let pst = null;
@@ -84,10 +76,10 @@ function current(personaId, inline = [], agent) {
 	return { mode, text: cache.value.text };
 }
 
-// replace 的近似剔除：只删「一行里同时有自称 + 点名模型/厂商」的行。
-const SELF = /^\s*(?:You are|You're|你是|您是|我(?:是|现在扮演|就是))/i;
+// Approximate replace removes only lines containing both self-identification and a named model or vendor.
+const SELF = /^\s*(?:You are|You're|\u4f60\u662f|\u60a8\u662f|\u6211(?:\u662f|\u73b0\u5728\u626e\u6f14|\u5c31\u662f))/i;
 const NAMED =
-	/(Claude|ChatGPT|GPT-?[45]|Gemini|Codex|Copilot|DeepSeek|Qwen|Kimi|GLM|Cursor|Windsurf|AI (?:assistant|model)|语言模型|助手)/i;
+	/(Claude|ChatGPT|GPT-?[45]|Gemini|Codex|Copilot|DeepSeek|Qwen|Kimi|GLM|Cursor|Windsurf|AI (?:assistant|model)|\u8bed\u8a00\u6a21\u578b|\u52a9\u624b)/i;
 const stripIdentity = (text) =>
 	String(text ?? "")
 		.split("\n")
@@ -101,8 +93,8 @@ const textOf = (content) => {
 	return "";
 };
 
-// 四种 agent API 的 system 落点。块结构（含 cache_control）尽量原地保留：
-// 拍平成字符串会让客户端自己的缓存断点失效，每一轮都重新计费。
+// System locations for four agent APIs. Preserve block structure including cache_control where possible:
+// flattening to a string invalidates client cache breakpoints and incurs charges on every turn.
 function anthropicSystem(body, persona, mode) {
 	const cur = body.system;
 	const blocks =
@@ -164,7 +156,7 @@ function geminiSystem(body, persona, mode) {
 
 const REWRITE = { anthropic: anthropicSystem, chat: chatSystem, responses: responsesSystem, gemini: geminiSystem };
 
-// 只回滚这个 hook 确切产出的完整请求；不根据人设片段或用户字面标签猜测来源。
+// Roll back only whole requests produced by this hook; never infer provenance from persona fragments or user-supplied labels.
 const originals = new Map();
 function restoreOwn(body, scope) {
 	const key = scope + JSON.stringify(body), before = originals.get(key);
@@ -185,7 +177,7 @@ function remember(before, body, scope) {
 	while (originals.size > 64) originals.delete(originals.keys().next().value);
 }
 
-/** magpie 每请求调一次：返回对象 = 用改过的请求，返回 undefined = 原样放行。 */
+/** Called once per magpie request: return an object to use the modified request, or undefined to pass it through. */
 export async function onRequest(body, ctx) {
 	try {
 		if (!body || typeof body !== "object" || Array.isArray(body)) return;
@@ -220,11 +212,11 @@ export async function onRequest(body, ctx) {
 		ctx?.report?.("ready", cfg.text.length);
 		return body;
 	} catch {
-		// fail-open：改不动就原样放行，别把 agent 的请求弄挂
+		// Fail open: pass through unchanged if rewriting fails rather than breaking the request.
 		try {
 			ctx?.report?.("invalid", 0);
 		} catch {
-			/* report 本身失败也不能影响放行 */
+			/* A reporting failure must not prevent pass-through. */
 		}
 	}
 }
