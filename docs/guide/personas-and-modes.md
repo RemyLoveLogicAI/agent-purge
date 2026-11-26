@@ -1,53 +1,53 @@
-# 人设与模式
+# Personas and modes
 
-人设正文决定要提供给执行器的提示词；名称和说明只用于管理。首次运行会生成 `neutral` 起步模板，你可以在 Web 中直接编辑，也可以创建自己的 Markdown 文件。
+The persona body determines the prompt provided to the harness; its name and description are only for management. The first run creates the `neutral` starter template. Edit it in the Web console or create your own Markdown file.
 
 ```bash
-agent-purge ls                       # 查看人设
-agent-purge use <id>                 # 切换并同步已选范围
-agent-purge mode append              # 修改全局模式
-agent-purge use <id> --for codex     # 只给 Codex 指定人设
-agent-purge use follow --for codex   # 恢复跟随全局
+agent-purge ls                       # List personas
+agent-purge use <id>                 # Switch and synchronize selected scopes
+agent-purge mode append              # Change the global mode
+agent-purge use <id> --for codex     # Assign a persona only to Codex
+agent-purge use follow --for codex   # Follow the global setting again
 ```
 
-## 四种处理模式
+## Four modes
 
-| 模式 | 行为 | 注意 |
+| Mode | Behavior | Notes |
 |---|---|---|
-| `replace`（默认） | 优先替换宿主身份行，尽量保留其他说明 | 身份识别是近似处理；无法读取宿主文本的启动入口按 strict 执行 |
-| `strict` | 用人设替换可控入口中的宿主文本 | 该入口原有说明也会移除；宿主仍可能添加额外文本 |
-| `append` | 保留宿主说明，另加一份人设 | 不替换原身份，需注意规则冲突 |
-| `off` | 停止相应入口注入 | 全局暂停与单次启动参数的作用范围不同 |
+| `replace` (default) | Prefer replacing host identity lines while preserving other instructions where possible | Identity detection is approximate; launch entry points that cannot read host text use strict behavior |
+| `strict` | Replace host text in the controllable entry point with the persona | Existing instructions in that entry point are also removed; the host may still add other text |
+| `append` | Keep host instructions and add a persona | Does not replace the original identity; watch for conflicting rules |
+| `off` | Stop injection at that entry point | Global pause and one-time launch arguments have different scopes |
 
-**strict 不等于「模型只收到人设」。** 实际角色可能是 `system`、`developer` 或项目上下文，取决于宿主和通道。希望保留宿主说明时，可先试 `append`。
+**Strict does not mean the model receives only the persona.** The actual role may be `system`, `developer`, or project context, depending on the host and channel. To preserve host instructions, try `append` first.
 
-模式只决定**注入的那段文本怎么写**，不改变**注入到哪**。宿主没有整段 system prompt 入口时，四种模式都只是追加——逐家判定见[支持情况](/reference/support)。
+The mode determines **how injected text is written**, not **where it is injected**. When the host has no full system-prompt entry point, all four modes only append. See the per-host [support matrix](/reference/support).
 
-## 手写人设
+## Write a persona
 
-将以下内容保存为 `~/.agent-purge/personas/concise.md`，然后执行 `agent-purge use concise`：
+Save the following as `~/.agent-purge/personas/concise.md`, then run `agent-purge use concise`:
 
 ```markdown
 ---
 id: concise
-name: 简洁协作
-description: 中文、先结论、修改前先读代码
+name: Concise collaboration
+description: English, conclusion first, read code before editing
 ---
 
-用简体中文协作。先给结论，再给依据。
-修改代码前先阅读现有实现；不确定时明确说明。
+Collaborate in English. Give the conclusion first, then the evidence.
+Read the existing implementation before changing code; state uncertainty clearly.
 ```
 
-只有正文进入提示词。`description` 用于列表说明，旧键 `desc` 仍兼容；Web 编辑会保留未涉及的元数据。高级匹配、排序与数据目录配置见[命令行参考](/reference/cli#人设文件)。
+Only the body enters the prompt. `description` is used in listings; the older `desc` key is still supported. Web editing preserves unrelated metadata. See the [CLI reference](/reference/cli#人设文件) for advanced matching, ordering, and data-directory configuration.
 
-也可参考维护者的 [some-magic 人设仓库](https://github.com/ZiChuanLan/some-magic)。
+The maintainer's [some-magic persona repository](https://github.com/ZiChuanLan/some-magic) is another reference.
 
-## 人设从哪来
+## Persona sources
 
-- **Web 编辑**：人设库页直接改正文与元数据
-- **本地导入**：`agent-purge persona import <dir>`，批量导入目录下的 `.md`
-- **仓库拉取**：`agent-purge pull [repo]`，默认从 GitHub 拉取
+- **Web editor**: edit body and metadata on the persona library page.
+- **Local import**: `agent-purge persona import <dir>` bulk-imports `.md` files from a directory.
+- **Repository pull**: `agent-purge pull [repo]` pulls from GitHub by default.
 
-## 按宿主覆写
+## Override per host
 
-控制台的每家详情里都能单独指定人设与力度，覆盖全局默认。覆写只影响该宿主，恢复「跟随全局」即可回到默认。
+Each host's details in the console let you override the global persona and mode. The override affects only that host; select follow global to return to the default.
