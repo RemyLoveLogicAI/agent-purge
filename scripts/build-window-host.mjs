@@ -42,10 +42,10 @@ function ensureSdk(root, cacheRoot) {
     const download = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
       `$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing -Uri '${SDK_URL}' -OutFile '${nupkg.replaceAll("'", "''")}'`],
     { encoding: 'utf8', windowsHide: true });
-    if (download.status !== 0) throw new Error(`WebView2 SDK 下载failed: ${download.error?.message ?? download.stderr}`);
+    if (download.status !== 0) throw new Error(`WebView2 SDK download failed: ${download.error?.message ?? download.stderr}`);
   }
   const actual = sha256(nupkg);
-  if (actual !== SDK_SHA256) throw new Error(`WebView2 SDK 校验failed: 期望 ${SDK_SHA256}，实际 ${actual}`);
+  if (actual !== SDK_SHA256) throw new Error(`WebView2 SDK verification failed: expected ${SDK_SHA256}, got ${actual}`);
 
   const unpack = join(cache, 'unpack');
   rmSync(unpack, { recursive: true, force: true });
@@ -101,7 +101,7 @@ export function verifyStaticRuntime(exe, label = 'window host', {
     { code: 'MINGW_RUNTIME' });
 }
 /**
- * 编译window host并放进瘦包目录。
+ * Compile the window host into the thin package directory.
  * @param {string} root repository root
  * @param {string} out thin package output directory (dist/agent-purge)
  * @param {string} cacheRoot build cache directory (dist/.cache)
