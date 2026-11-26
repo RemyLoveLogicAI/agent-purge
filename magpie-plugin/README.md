@@ -1,10 +1,10 @@
-# magpie 网关插件
+# magpie gateway plugin
 
-可选集成：改写经过 magpie 网关的请求提示词，读取与 CLI 相同的人设和模式。
+Optional integration: rewrite request prompts passing through the magpie gateway using the same personas and modes as the CLI.
 
-**插件入口是本目录，不是仓库根目录。** 根 `package.json` 是 CLI；插件不在 agent-purge 的 npm 包里。
+**The plugin entry point is this directory, not the repository root.** The root `package.json` is the CLI; the plugin is not included in the agent-purge npm package.
 
-## 安装
+## Install
 
 ```bash
 git clone https://github.com/ZiChuanLan/agent-purge
@@ -14,34 +14,34 @@ magpie plugin add /path/to/agent-purge/magpie-plugin
 magpie plugin list
 ```
 
-先运行一次 agent-purge 以初始化人设。增删人设后重新运行 `gen-personas.mjs`；生成的 `page/personas.js` 只属于本地，不提交。
+Run agent-purge once to initialize personas. After adding or removing personas, rerun `gen-personas.mjs`; the generated `page/personas.js` is local only and must not be committed.
 
-插件读取 `~/.agent-purge/`，也支持 `AGENT_PURGE_HOME`。切换 CLI 人设后，下一个经过网关的请求读取新设置。插件页设置会写入 magpie options。
+The plugin reads `~/.agent-purge/` and also supports `AGENT_PURGE_HOME`. After switching the CLI persona, the next request through the gateway reads the new setting. Plugin page settings are written to magpie options.
 
-## 配置
+## Configuration
 
 ```bash
 magpie plugin options magpie-plugin '{"mode":"append"}'
 ```
 
-上述插件名按安装目录名 `magpie-plugin` 使用。
+The plugin name `magpie-plugin` above follows the installation directory name.
 
-| 字段 | 用途 |
+| Field | Purpose |
 |---|---|
 | `mode` | `off` / `strict` / `replace` / `append` |
-| `persona` | 人设标识 |
-| `agents` | 限定生效的执行器（白名单），例如 `["claude","codex"]` |
-| `disabledAgents` | 排除的执行器（跳过放行），例如 `["claude"]` |
+| `persona` | Persona identifier |
+| `agents` | Limit application to these harnesses (allowlist), for example `["claude","codex"]` |
+| `disabledAgents` | Exclude these harnesses (skip rewriting), for example `["claude"]` |
 
-插件管理页提供可视化生效范围配置（全部生效 / 仅勾选生效 / 排除勾选），预置常用 Agent 并支持自定义添加，无需手动在 CLI 下修改 JSON 选项。
+The plugin management page provides visual scope configuration (all, selected only, or exclude selected), presets common agents, and supports adding custom agents, without manually changing JSON options in the CLI.
 
-`off` 不改请求；`strict` 替换可控 system 文本；`replace` 近似删除身份行后放入人设；`append` 将人设置于宿主文本**之前**，与 CLI 的后置位置不同。
+`off` leaves requests unchanged; `strict` replaces controllable system text; `replace` approximately removes identity lines before inserting the persona; `append` places the persona **before** host text, unlike the CLI, which places it after.
 
-## 边界与测试
+## Boundaries and tests
 
-- 只处理经过网关的请求，不能修改客户端已经固定的行为或未经过网关的流量。
-- strict 会移除原 system 中的工具说明文本；不等于清空独立的结构化工具定义。
-- 插件页不能直接读取本地文件，人设列表由生成脚本提供。
-- `npm test` 包含钩子与页面逻辑回归，不依赖 magpie；这些测试不等于所有 magpie 版本的真实安装验收。
+- Only requests passing through the gateway are handled; client behavior already fixed in place or traffic outside the gateway cannot be changed.
+- Strict mode removes tool instruction text from the original system prompt; it does not clear separate structured tool definitions.
+- The plugin page cannot read local files directly; the generation script supplies the persona list.
+- `npm test` includes hook and page logic regressions without depending on magpie. These tests are not equivalent to real installation acceptance across all magpie versions.
 
-[主项目](../README.md) · [使用指南](../docs/reference/cli.md)
+[Main project](../README.md) · [User guide](../docs/reference/cli.md)
