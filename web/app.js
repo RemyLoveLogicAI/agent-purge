@@ -93,10 +93,10 @@ const harnessIcon = (id, size = 22) => {
 
 const CHANNELS = ['install', 'slash', 'shim', 'project'];
 const installSourceLabel = src => ({
-  shortcut: pick('开始菜单快捷方式', 'Start Menu shortcut'),
-  registry: pick('注册表卸载项', 'Uninstall registry entry'),
-  guess: pick('盘符扫描', 'Drive scan'),
-  scan: pick('盘内浅扫', 'Shallow disk scan'),
+  shortcut: 'Start Menu shortcut',
+  registry: 'Uninstall registry entry',
+  guess: 'Drive scan',
+  scan: 'Shallow disk scan',
 }[src] || src);
 const channelStatic = c => ({
   install: pick('写进这家自己的配置或插件，新开的会话读取。', 'Written to this tool’s own config or plugin; read by new sessions.'),
@@ -156,8 +156,8 @@ function pulseClass(el, cls, ms = 600) {
 }
 async function api(path, data, method) {
   const response = await fetch(`/api/${path}`, { method: method || (data ? 'POST' : 'GET'), headers: data ? { 'content-type': 'application/json' } : {}, body: data ? JSON.stringify(data) : undefined });
-  let result; try { result = await response.json(); } catch { throw new Error(pick('本地服务返回了无效内容，请确认它还在运行。', 'Local service returned invalid data; please verify it is running.')); }
-  if (!response.ok || result.error) throw new Error(result.error || pick(`请求失败 (${response.status})`, `Request failed (${response.status})`));
+  let result; try { result = await response.json(); } catch { throw new Error('Local service returned invalid data; please verify it is running.'); }
+  if (!response.ok || result.error) throw new Error(result.error || `Request failed (${response.status})`);
   return result;
 }
 function announce(result, success) {
