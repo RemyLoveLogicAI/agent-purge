@@ -179,19 +179,19 @@ test('UI model: paused resume draft, selection sorting, conservative effect labe
   assert.equal(effectLabel(harnesses[2]), 'Config written: new b sessions will read it; active sessions unconfirmed');
   assert.match(effectLabel(harnesses[2], true), /pause/i);
   assert.equal(effectLabel({ id: 'c', armed: [], found: false }), 'Not installed locally; install first to enable');
-  assert.equal(effectLabel(harnesses[2], false, null, 'zh-CN'), '配置已写入：新开 b 读取；现有会话还没确认');
-  assert.match(effectLabel(harnesses[2], true, null, 'zh-CN'), /暂停/);
-  assert.equal(effectLabel({ id: 'c', armed: [], found: false }, false, null, 'zh-CN'), '本机没装，装好后再回来开');
+  assert.equal(effectLabel(harnesses[2], false, null, 'zh-CN'), 'Config written: new b sessions will read it; active sessions unconfirmed');
+  assert.match(effectLabel(harnesses[2], true, null, 'zh-CN'), /pause/i);
+  assert.equal(effectLabel({ id: 'c', armed: [], found: false }, false, null, 'zh-CN'), 'Not installed locally; install first to enable');
   // dsh 的 /purge off 是 profile 级：UI 要能看出哪个形态被暂停了
-  assert.match(effectLabel({ id: 'dsh', armed: ['install', 'slash'] }, false, { desktop: { enabled: false } }, 'zh-CN'), /未列出的形态尚未确认/);
-  assert.match(effectLabel({ id: 'dsh', profiles: ['desktop', 'web'], armed: ['install', 'slash'] }, false, { desktop: { enabled: false }, web: { enabled: false } }, 'zh-CN'), /已选形态均被/);
-  assert.equal(effectLabel({ id: 'dsh', armed: ['install', 'slash'] }, false, {}, 'zh-CN'), '配置已写入：新开 dsh 读取；现有会话还没确认');
+  assert.match(effectLabel({ id: 'dsh', armed: ['install', 'slash'] }, false, { desktop: { enabled: false } }, 'zh-CN'), /unlisted profiles unconfirmed/);
+  assert.match(effectLabel({ id: 'dsh', profiles: ['desktop', 'web'], armed: ['install', 'slash'] }, false, { desktop: { enabled: false }, web: { enabled: false } }, 'zh-CN'), /All selected dsh profiles are paused/);
+  assert.equal(effectLabel({ id: 'dsh', armed: ['install', 'slash'] }, false, {}, 'zh-CN'), 'Config written: new dsh sessions will read it; active sessions unconfirmed');
   assert.match(effectLabel({ id: 'pi', armed: ['slash'], auto: false, caps: { hot: { ok: true, needs: 'slash' } } }), /purge on/);
   assert.match(effectLabel({ id: 'pi', armed: ['install'], mode: 'off' }), /Disabled for this tool/);
   assert.match(scopeSummary({ armed: { a: ['install'], b: [] } }), /1 target\(s\) selected/);
   assert.match(scopeSummary({ armed: {}, paused: true }), /Paused/);
-  assert.match(scopeSummary({ armed: { a: ['install'], b: [] } }, 'zh-CN'), /已选择 1 个/);
-  assert.match(scopeSummary({ armed: {}, paused: true }, 'zh-CN'), /已暂停/);
+  assert.match(scopeSummary({ armed: { a: ['install'], b: [] } }, 'zh-CN'), /1 target\(s\) selected/);
+  assert.match(scopeSummary({ armed: {}, paused: true }, 'zh-CN'), /Paused/);
 });
 test('UI model: 没装的家不算可接管，被单独关掉的家单独一档', () => {
   // 真装了：有命令、有安装目录（含 macOS .app），或配置根在且不是只剩残留

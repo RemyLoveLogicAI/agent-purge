@@ -1,11 +1,7 @@
-// Bilingual (en / zh-CN) dictionary and helpers for the Web console.
-// Defaults to English ("en") unless the server-detected or user-selected locale is Chinese.
+// English dictionary and helpers for the Web console.
+// Legacy locale selections are normalized to English.
 
-const normalize = (value) => {
-	if (typeof value !== 'string') return 'en';
-	const v = value.trim().toLowerCase();
-	return v === 'zh' || v.startsWith('zh-') ? 'zh-CN' : 'en';
-};
+const normalize = () => 'en';
 
 let currentLocale = (() => {
 	if (typeof document !== 'undefined') {
