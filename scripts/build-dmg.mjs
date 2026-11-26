@@ -10,7 +10,7 @@ import { listFiles, readJSON } from './build-common.mjs';
 import { smoke } from './build-smoke.mjs';
 
 if (process.platform !== 'darwin') {
-  throw new Error('构建 macOS .dmg 需要 macOS 环境（本地非 macOS 可通过 GitHub Actions release.yml 构建）。');
+  throw new Error('Building a macOS .dmg requires macOS (on other systems use the GitHub Actions release.yml workflow).');
 }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,7 +19,7 @@ const ENTRY = join(ROOT, '.build-entry.mjs');
 const version = readJSON(join(ROOT, 'package.json')).version;
 
 const bun = captureBin('bun', ['--version']);
-if (!bun) throw new Error('构建 macOS 产物需要 Bun，请先安装 Bun');
+if (!bun) throw new Error('Bun is required to build macOS artifacts; install Bun first');
 
 const assets = [
   'matrix.json', 'package.json', 'lib/evidence.mjs',
@@ -28,16 +28,16 @@ const assets = [
   ...listFiles(join(ROOT, 'lib/templates/personas')).map(file => `lib/templates/personas/${file}`),
 ];
 const duplicates = assets.map(file => file.split('/').pop()).filter((file, index, all) => all.indexOf(file) !== index);
-if (duplicates.length) throw new Error('内嵌资源重名：' + duplicates.join(', '));
+if (duplicates.length) throw new Error('Duplicate embedded resource names: ' + duplicates.join(', '));
 
 const run = (cmd, args, label) => {
   const res = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: 'inherit' });
-  if (res.status !== 0) throw new Error(`${label} 失败（exit ${res.status ?? 'null'}）`);
+  if (res.status !== 0) throw new Error(`${label} failed (exit ${res.status ?? 'null'})`);
 };
 
 const buildIcns = (workDir) => {
   const srcPng = join(ROOT, 'web', 'assets', 'agent-purge.png');
-  if (!existsSync(srcPng)) throw new Error(`缺少图标源文件：${srcPng}`);
+  if (!existsSync(srcPng)) throw new Error(`Missing source icon: ${srcPng}`);
   const iconset = join(workDir, 'AppIcon.iconset');
   mkdirSync(iconset, { recursive: true });
   const specs = [
@@ -121,7 +121,7 @@ try {
       child.once('error', reject);
       child.once('close', resolveCode);
     });
-    if (code !== 0 || !existsSync(binPath)) throw new Error(`bun build --compile (${target}) 失败`);
+    if (code !== 0 || !existsSync(binPath)) throw new Error(`bun build --compile (${target}) failed`);
     chmodSync(binPath, 0o755);
 
     if (arch === process.arch) {
@@ -146,7 +146,7 @@ try {
     rmSync(dmgPath, { force: true });
     run('hdiutil', ['create', '-volname', `agent-purge ${version}`, '-srcfolder', stage, '-ov', '-format', 'UDZO', dmgPath], `hdiutil create ${dmgName}`);
     run('hdiutil', ['verify', dmgPath], `hdiutil verify ${dmgName}`);
-    console.log(`macOS 未签名镜像：${dmgPath} (${(statSync(dmgPath).size / 1048576).toFixed(1)} MB)`);
+    console.log(`Unsigned macOS image: ${dmgPath} (${(statSync(dmgPath).size / 1048576).toFixed(1)} MB)`);
   }
 } finally {
   rmSync(ENTRY, { force: true });

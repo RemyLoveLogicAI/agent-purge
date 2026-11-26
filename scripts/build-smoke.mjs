@@ -23,7 +23,7 @@ export async function smoke(command, prefix, { cwd, version, serve = true, witho
       env.PATH = tools;
     }
     const probe = spawnSync(process.platform === 'win32' ? 'where.exe' : 'which', [process.platform === 'win32' ? 'node.exe' : 'node'], { env, encoding: 'utf8', windowsHide: true });
-    if (probe.status === 0) throw new Error('独立产物验收的 PATH 仍有 Node');
+    if (probe.status === 0) throw new Error('Standalone artifact smoke-test PATH still contains Node');
   }
   let child, ended;
   const run = args => {
@@ -33,17 +33,17 @@ export async function smoke(command, prefix, { cwd, version, serve = true, witho
   };
   try {
     run(['--help']);
-    if (readdirSync(env.AGENT_PURGE_HOME).length || readdirSync(env.AGENT_PURGE_JOURNAL_DIR).length) throw new Error('--help 写入了数据或恢复目录');
+    if (readdirSync(env.AGENT_PURGE_HOME).length || readdirSync(env.AGENT_PURGE_JOURNAL_DIR).length) throw new Error('--help wrote data or recovery directories');
     run(['status']);
-    console.log('  smoke: --help 只读 / status 通过');
+    console.log('  smoke: --help read-only / status passed');
     if (!serve) return;
     child = spawn(command, [...prefix, '--serve', '0'], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     ended = new Promise(resolve => child.once('close', resolve));
     const url = await new Promise((resolve, reject) => {
       let output = '';
-      const timer = setTimeout(() => reject(new Error('--serve 启动超时')), 20000);
+      const timer = setTimeout(() => reject(new Error('--serve startup timed out')), 20000);
       child.on('error', error => { clearTimeout(timer); reject(error); });
-      child.on('close', code => { clearTimeout(timer); reject(new Error(`--serve 提前退出 (${code}): ${output.slice(-1000)}`)); });
+      child.on('close', code => { clearTimeout(timer); reject(new Error(`--serve exited early (${code}): ${output.slice(-1000)}`)); });
       child.stdout.on('data', bytes => {
         output += bytes.toString();
         const match = /agent-purge web → (http:\/\/127\.0\.0\.1:\d+)/.exec(output);
@@ -56,12 +56,12 @@ export async function smoke(command, prefix, { cwd, version, serve = true, witho
       if (!response.ok) throw new Error(`smoke GET ${path}: ${response.status}`);
       if (path === '/api/state') {
         const state = await response.json();
-        if (state.version !== version) throw new Error('产物运行版本与 package.json 不一致');
-        if (!state.personas?.some(p => p.id === 'neutral' && p.body?.trim())) throw new Error('全新安装缺少中性模板');
+        if (state.version !== version) throw new Error('Artifact runtime version does not match package.json');
+        if (!state.personas?.some(p => p.id === 'neutral' && p.body?.trim())) throw new Error('Fresh installation is missing the neutral template');
       } else await response.arrayBuffer();
     }
     child.kill(); await ended; child = null;
-    console.log(`  smoke: Web 资源及运行版本 ${version} 通过`);
+    console.log(`  smoke: Web assets and runtime version ${version} passed`);
   } finally {
     if (child) { child.kill(); await ended; }
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
