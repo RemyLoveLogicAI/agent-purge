@@ -52,7 +52,7 @@ const controlArgs = separator < 0 ? argv : argv.slice(0, separator);
 if (controlArgs.includes("--help") || controlArgs.includes("-h")) { help(); process.exit(0); }
 if (argv[0] === "self-uninstall" && !argv.includes("--yes") && !argv.includes("--dry-run")) {
 	console.error(L(
-		"self-uninstall 会永久删除用户人设、设置和恢复资料。请先备份；仅撤销接管并保留数据请用 agent-purge clean。\n先预览：agent-purge self-uninstall --dry-run\n确认删除：agent-purge self-uninstall --yes",
+		"self-uninstall permanently deletes user personas, settings, and recovery data. Back up first. To undo takeovers while retaining data, use agent-purge clean.\nPreview: agent-purge self-uninstall --dry-run\nConfirm deletion: agent-purge self-uninstall --yes",
 		"self-uninstall permanently deletes your personas, settings, and restore data. Back up first; to only revert injections while keeping data, run agent-purge clean.\nPreview: agent-purge self-uninstall --dry-run\nConfirm: agent-purge self-uninstall --yes",
 	));
 	process.exit(2);
@@ -211,7 +211,7 @@ switch (cmd) {
 			console.log("\n✓ Already up to date!");
 			break;
 		}
-		console.log(`\n⚡ New version available: v${info.latest}！`);
+		console.log(`\n⚡ New version available: v${info.latest}!`);
 		if (info.body) {
 			console.log(`\n[Release notes]\n${info.body.trim().slice(0, 500)}${info.body.length > 500 ? "..." : ""}`);
 		}
@@ -304,19 +304,19 @@ switch (cmd) {
 		}
 		if (r.skipped.length) {
 			const lines = r.skipped.map((s) => `  · ${s.what} — ${s.detail}`);
-			console.log(`\n已跳过 ${r.skipped.length} 项无法撤销的记录（账本与备份原地保留，重试仍有效）：\n${lines.join("\n")}`);
+			console.log(`\nSkipped ${r.skipped.length} records that could not be undone (ledgers and backups are retained for retry):\n${lines.join("\n")}`);
 			// 退出码 3 会被卸载器看见：干净完成，但有跳过项。安装器给人看的控制台是隐藏的，所以落一份日志。
 			if (!dryRun) try {
 				appendFileSync(join(DATA, "clean-leftovers.log"),
 					`${new Date().toISOString()} clean --keep-failed\n${lines.join("\n")}\n`);
-				console.log(`  留痕：${join(DATA, "clean-leftovers.log")}`);
+				console.log(`  Log: ${join(DATA, "clean-leftovers.log")}`);
 			} catch { /* 日志写不上不影响退出码 */ }
 		}
-		if (r.leftovers.length) console.log(`\n还剩：\n${r.leftovers.map((l) => `  · ${l}`).join("\n")}`);
-		console.log(r.ok && !r.leftovers.length ? "\n干净了：没有残留" : "\n有残留，见上");
+		if (r.leftovers.length) console.log(`\nRemaining:\n${r.leftovers.map((l) => `  · ${l}`).join("\n")}`);
+		console.log(r.ok && !r.leftovers.length ? "\nClean: no leftovers" : "\nLeftovers remain; see above");
 		if (!r.ok) process.exitCode = 1;
 		else if (r.skipped.length) process.exitCode = 3;
-		if (cmd === "self-uninstall") console.log("\n代码本身用包管理器卸：npm uninstall -g agent-purge");
+		if (cmd === "self-uninstall") console.log("\nUninstall the program with your package manager: npm uninstall -g agent-purge");
 		break;
 	}
 	case "verify": {
@@ -329,11 +329,11 @@ switch (cmd) {
 			if (r.status === "captured") {
 				const m = r.modes[0];
 				const where = ["sys", "user"].filter((k) => m?.injected?.[k]).join("+") || "-";
-				console.log(`✓ ${r.harness} 实测：命中 ${where} · ${m?.chars ?? 0} 字 · ${m?.requests?.length ?? 0} 个请求`);
-			} else if (r.status === "missing") console.log(`· ${r.harness} 未安装，跳过`);
+				console.log(`✓ ${r.harness} verified: hit ${where} · ${m?.chars ?? 0} characters · ${m?.requests?.length ?? 0} requests`);
+			} else if (r.status === "missing") console.log(`· ${r.harness} not installed; skipped`);
 			else console.log(`✗ ${r.harness} ${r.status}${r.reason ? ` — ${r.reason}` : ""}`);
 		}
-		console.log(`\n证据：${join(DATA, "verification", "latest.json")}`);
+		console.log(`\nEvidence: ${join(DATA, "verification", "latest.json")}`);
 		cleanupRoots();
 		if (report.harnesses.some((r) => ["mismatch", "error"].includes(r.status))) process.exitCode = 1;
 		break;
@@ -349,31 +349,31 @@ async function defaultHarness() {
 	const { state } = loadState(DATA);
 	const harness = state.default?.harness;
 	if (!harness) {
-		console.log("还没有默认 harness。两种办法：\n  agent-purge web           在浏览器里选，再点“设为默认执行器”\n  agent-purge <harness>     直接点名跑（如 agent-purge codex）");
+		console.log("No default harness is set. Two options:\n  agent-purge web           Choose one in the browser and set it as default\n  agent-purge <harness>     Launch one directly (for example, agent-purge codex)");
 		process.exit(0);
 	}
 	const eff = resolveFor(state, harness);
-	const mark = (from) => (from === "override" ? "（单独指定）" : "（跟随全局）");
-	console.log(`[default] ${harness} · ${eff.mode}${mark(eff.modeFrom)} · persona=${eff.persona ?? "-"}${mark(eff.personaFrom)}（state.json）`);
+	const mark = (from) => (from === "override" ? " (override)" : " (follows global)");
+	console.log(`[default] ${harness} · ${eff.mode}${mark(eff.modeFrom)} · persona=${eff.persona ?? "-"}${mark(eff.personaFrom)} (state.json)`);
 	return harness;
 }
 
 async function launch(name) {
 	const spec = matrix.harnesses[name];
-	if (!spec) die(`未知 harness: ${name}（可用: ${Object.keys(matrix.harnesses).join(", ")}；子命令见 --help）`);
-	if (spec.class === "unsupported") die(`${name} 做不到：${spec.reason}`);
+	if (!spec) die(`Unknown harness: ${name} (available: ${Object.keys(matrix.harnesses).join(", ")}; see --help for subcommands)`);
+	if (spec.class === "unsupported") die(`${name} is unsupported: ${spec.reason}`);
 
 	const { state } = loadState(DATA);
 	// 由 state.json 决定注入方式；显式 --mode 永远压过它
 	const explicitMode = flag("--mode", null);
-	if (explicitMode !== null && !MODES.includes(explicitMode)) die(`--mode 只能是 ${MODES.join(" / ")}`);
+	if (explicitMode !== null && !MODES.includes(explicitMode)) die(`--mode must be one of ${MODES.join(" / ")}`);
 	const config = launchConfig(state, name, { mode: explicitMode, persona: flag("--persona", null) === "active" ? state.persona : flag("--persona", null) });
 	const mode = config.mode;
 
 	// 裸敲 pi 的持久位（写 state.json，扩展下一会话读它）
 	const autoFlag = name === "pi" || name === "omp" ? flag("--auto", null) : null;
 	if (autoFlag !== null) {
-		if (autoFlag !== "on" && autoFlag !== "off") die("--auto 只能是 on / off");
+		if (autoFlag !== "on" && autoFlag !== "off") die("--auto must be on / off");
 		const { setPiAuto, setOmpAuto } = await import("../lib/state.mjs");
 		if (name === "pi") setPiAuto(DATA, autoFlag === "on");
 		else setOmpAuto(DATA, autoFlag === "on");
@@ -383,13 +383,13 @@ async function launch(name) {
 	// pi 的人设落在哪一层：sys（默认，真系统提示词）或 user（塞进用户消息，给忽略 system 的模型）
 	const layerFlag = name === "pi" ? flag("--layer", null) : null;
 	if (layerFlag !== null) {
-		if (layerFlag !== "sys" && layerFlag !== "user") die("--layer 只能是 sys / user");
+		if (layerFlag !== "sys" && layerFlag !== "user") die("--layer must be sys / user");
 		const { setPiUserLayer } = await import("../lib/state.mjs");
 		setPiUserLayer(DATA, layerFlag === "user");
 		console.log(
 			layerFlag === "user"
-				? "[layer] 人设额外塞进用户消息（给忽略 system 的模型用；代价是每条消息多一段）"
-				: "[layer] 人设走 system 层（默认）",
+				? "[layer] Persona is also inserted into user messages (for models that ignore system; adds text to every message)"
+				: "[layer] Persona uses the system layer (default)",
 		);
 	}
 
@@ -429,7 +429,7 @@ async function launch(name) {
 		const store = createStore(DATA);
 		const id = config.persona ?? store.activeId();
 		picked = store.read(id);
-		if (!picked) die(`没有 persona: ${id}`);
+		if (!picked) die(`Persona not found: ${id}`);
 		personaPath = picked.id === store.activeId() ? store.refreshActive() : store.materialize(picked.id);
 		personaText = picked.body.trim();
 	}
@@ -465,21 +465,21 @@ async function launch(name) {
 		if (!raw || raw.startsWith("--")) die('--ask 需要一个 prompt，例如: agent-purge codex --ask "解释这段代码"');
 		const prompt = raw.trim();
 		const one = oneshots[name];
-		if (!one) die(`${name} 没有一次性运行模式（可用: ${Object.keys(oneshots).join(", ")}）`);
+		if (!one) die(`${name} has no one-shot mode (available: ${Object.keys(oneshots).join(", ")})`);
 		built = one({ prompt, personaPath, personaText, mode, cwd, root: DATA });
 		if (passthrough.length) built.args = [...built.args, ...passthrough];
 	} else {
 		built = backends[name]?.({ personaPath, personaText, mode, args: passthrough, cwd, root: DATA, reason: spec.reason }) ?? {
-			unsupported: "该 harness 还没有后端实现",
+			unsupported: "This harness has no backend implementation yet",
 		};
 	}
 
 	if (built.manual) {
-		console.log(`${name}: 需要人工介入`);
+		console.log(`${name}: Manual intervention required`);
 		built.manual.forEach((line) => console.log("  - " + line));
 		process.exit(0);
 	}
-	if (built.unsupported) die(`${name} 做不到：${built.unsupported}`);
+	if (built.unsupported) die(`${name} is unsupported: ${built.unsupported}`);
 
 	if (built.note) console.log(built.note);
 	const dryRun = controlArgs.includes("--dry-run");
@@ -491,7 +491,7 @@ async function launch(name) {
 		if (name === "omp" && ["--system-prompt", "--append-system-prompt"].includes(built.args[0])) built.args.splice(0, 2);
 		const { resolveSlash } = await import("../lib/slashes.mjs");
 		extFile = resolveSlash(name, DATA)?.file;
-		if (!extFile) die(`${name}: 没有扩展目录`);
+		if (!extFile) die(`${name}: no extension directory`);
 		// 临时 -e 只供本次进程；不会悄悄选择常驻 /purge 或覆盖用户已有扩展。
 		if (!state.armed?.[name]?.includes("slash")) {
 			extFile = join(DATA, "runtime", "extension-" + name + ".mjs");
@@ -507,7 +507,7 @@ async function launch(name) {
 	console.log(`[cmd] ${[built.cmd, ...previewArgs(built.args)].join(" ")}`);
 	if (extFile) console.log(`[ext] ${extFile}`);
 	if (dryRun) return;
-	if (!resolveBin(built.cmd)) die(`${name}: 找不到可执行文件 ${built.cmd}`);
+	if (!resolveBin(built.cmd)) die(`${name}: executable not found: ${built.cmd}`);
 	if (name === "opencode" && built.args.some(v => v === "--attach" || v.startsWith("--attach="))) die("一次性启用使用独立宿主；--attach 指向已有服务，请使用该服务已登记的常驻通道");
 	const needsLease = useExtension || built.runtime || ["pi", "omp", "dsh", "opencode", "opencode2"].includes(name);
 	const lease = needsLease ? createLaunch(DATA, name, { persona: picked?.id, mode, writer: useExtension ? "extension" : built.runtime ? "temporary" : "cli" }) : null;
@@ -520,7 +520,7 @@ async function launch(name) {
 			built.cleanup?.();
 			if (undoExtension) { undoExtension(); undoExtension = null; }
 			cleaned = true; return true;
-		} catch (error) { console.error("[cleanup] " + error.message + "；恢复凭据已保留，可重试"); return false; }
+		} catch (error) { console.error("[cleanup] " + error.message + "; recovery credentials are retained; retry is possible"); return false; }
 	};
 	process.once("exit", cleanup);
 	try {
