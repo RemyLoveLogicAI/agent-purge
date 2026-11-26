@@ -1,8 +1,7 @@
-import { getLocale, isZh, listJoin, pick } from './i18n.mjs';
+import { getLocale, listJoin, pick } from './i18n.mjs';
 
 const MODE_LABELS_BY_LOCALE = {
 	en: { strict: 'Persona Only', replace: 'Replace Identity', append: 'Append', off: 'Paused' },
-	'zh-CN': { strict: '只留人设', replace: '替换身份', append: '末尾追加', off: '暂停' },
 };
 const MODE_DESCRIPTIONS_BY_LOCALE = {
 	en: {
@@ -11,16 +10,11 @@ const MODE_DESCRIPTIONS_BY_LOCALE = {
 		append: 'Keeps the built-in system prompt intact and appends the persona at the end. Required for append-only tools.',
 		off: 'Pauses persona injection for this tool while keeping local configuration.',
 	},
-	'zh-CN': {
-		replace: '保留原厂代码规范与工具定义，只把助手对自己的认知换成人设。多数工具推荐。',
-		strict: '把可控入口的原厂系统指令一起压掉，让人设优先。各家能压的范围不同。',
-		append: '原厂系统提示词原样保留，在末尾补一段人设。写入型工具只能这样做。',
-		off: '暂停对这个工具的注入，已有本地配置保留。',
-	},
+
 };
 
-export const modeLabels = (locale = getLocale()) => (isZh(locale) ? MODE_LABELS_BY_LOCALE['zh-CN'] : MODE_LABELS_BY_LOCALE.en);
-export const modeDescriptions = (locale = getLocale()) => (isZh(locale) ? MODE_DESCRIPTIONS_BY_LOCALE['zh-CN'] : MODE_DESCRIPTIONS_BY_LOCALE.en);
+export const modeLabels = (locale = getLocale()) => MODE_LABELS_BY_LOCALE.en;
+export const modeDescriptions = (locale = getLocale()) => MODE_DESCRIPTIONS_BY_LOCALE.en;
 
 // Legacy exports kept for existing imports; prefer modeLabels()/modeDescriptions() for dynamic locale.
 export const MODE_LABELS = new Proxy({}, {
@@ -40,15 +34,11 @@ const PURGE_NOTES_BY_LOCALE = {
 		partial: 'Replacement is active, though part of the host prompt survives (its own identity line, or fixed clauses it re-prepends).',
 		unverified: 'System prompt character count has not been measured for this tool yet; no purge claim is made.',
 	},
-	'zh-CN': {
-		append: '这家没有整段 system prompt 入口：人设是追加进去的，内置身份仍在提示词里。',
-		partial: '替换生效，但宿主提示词仍有一部分留下（自带身份句，或它每次都会拼回的固定条款）。',
-		unverified: '这家还没有系统提示词字数的实测，不声称已净化。',
-	},
+
 };
 
 export const purgeNoteOf = (harness, locale = getLocale()) => {
-	const table = isZh(locale) ? PURGE_NOTES_BY_LOCALE['zh-CN'] : PURGE_NOTES_BY_LOCALE.en;
+	const table = PURGE_NOTES_BY_LOCALE.en;
 	return table[harness?.purgeKind] ?? null;
 };
 
@@ -80,13 +70,9 @@ const CAPTURE_LABELS_BY_LOCALE = {
 		missing: 'Not found', unavailable: 'Not found', error: 'Error', mismatch: 'Mismatch',
 		'no-request': 'No request', 'not-tested': 'Not tested',
 	},
-	'zh-CN': {
-		captured: '已捕获请求', passed: '验证通过', partial: '部分通过', blocked: '接入受阻',
-		missing: '未发现入口', unavailable: '未发现入口', error: '检测异常', mismatch: '不符合预期',
-		'no-request': '未捕获请求', 'not-tested': '未测试',
-	},
+
 };
-export const captureLabels = (locale = getLocale()) => (isZh(locale) ? CAPTURE_LABELS_BY_LOCALE['zh-CN'] : CAPTURE_LABELS_BY_LOCALE.en);
+export const captureLabels = (locale = getLocale()) => CAPTURE_LABELS_BY_LOCALE.en;
 export const CAPTURE_LABELS = new Proxy({}, {
 	get: (_, key) => captureLabels()[key],
 	ownKeys: () => Object.keys(CAPTURE_LABELS_BY_LOCALE.en),
@@ -95,9 +81,8 @@ export const CAPTURE_LABELS = new Proxy({}, {
 
 const CHANNEL_LABELS_BY_LOCALE = {
 	en: { install: 'Config', shim: 'CLI Shim', slash: 'Plugin', project: 'Project Rules' },
-	'zh-CN': { install: '配置写入', shim: '启动命令', slash: '会话插件', project: '项目规则' },
 };
-export const channelLabels = (locale = getLocale()) => (isZh(locale) ? CHANNEL_LABELS_BY_LOCALE['zh-CN'] : CHANNEL_LABELS_BY_LOCALE.en);
+export const channelLabels = (locale = getLocale()) => CHANNEL_LABELS_BY_LOCALE.en;
 export const CHANNEL_LABELS = new Proxy({}, {
 	get: (_, key) => channelLabels()[key],
 	ownKeys: () => Object.keys(CHANNEL_LABELS_BY_LOCALE.en),
