@@ -4,7 +4,7 @@ import { verificationEvidence } from './evidence.mjs';
 applyDomI18n();
 
 const $ = id => document.getElementById(id);
-// 数据只进入文本节点或固定属性，不解析来自人设/报告的 HTML。
+// Data enters text nodes or fixed attributes only; never parse HTML from personas or reports.
 function node(tag, attrs = {}, ...children) {
   const el = ['svg', 'path', 'circle'].includes(tag) ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -22,8 +22,8 @@ function node(tag, attrs = {}, ...children) {
   return el;
 }
 
-// 声明放在主题代码之前：resolvedTheme() 的默认参数会读 state，先声明就不会有人以后在 applyTheme
-// 之前调用它时踩到 TDZ（当前 applyTheme 会先写 data-theme，默认参数短路，暂时读不到 state）
+// Declare state before theme code: resolvedTheme() default parameters read state, avoiding temporal dead zone errors
+// if called before applyTheme (currently applyTheme writes data-theme first, so the default parameter short-circuits).
 let state, base, draft, editor = null, editorBaseline = '', busy = false, activePage = 'console', expanded = null;
 let capture = null, draftConflict = false, project = null;
 const themeMedia = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -86,7 +86,7 @@ const harnessIcon = (id, size = 22) => {
   const file = HARNESS_ICON_FILES[id];
   const big = size > 22 ? ' tool-icon-lg' : '';
   if (!file) return node('span', { class: `tool-icon is-fallback${big}`, 'aria-hidden': 'true' }, id.slice(0, 1).toUpperCase());
-  // ?v=2 绕开旧版 server 对 /assets/ 发过的 max-age 缓存
+  // ?v=2 bypasses the old server max-age cache for /assets/.
   return node('img', { class: `tool-icon${big}`, src: `assets/${file}?v=2`, alt: '', width: String(size), height: String(size) });
 };
 
