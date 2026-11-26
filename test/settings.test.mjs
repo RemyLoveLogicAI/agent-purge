@@ -83,7 +83,7 @@ test('settings: theme 默认 auto，支持切换并校验 light/dark/auto', () =
 	assert.equal(settingsOf(loadState(home).state).theme, 'auto');
 
 	assert.throws(() => saveSettings(home, { theme: 'sepia' }), /auto.*light.*dark/);
-	assert.throws(() => saveSettings(home, { theme: 123 }), /字符串/);
+	assert.throws(() => saveSettings(home, { theme: 123 }), /string/);
 });
 
 /* ── WebDAV：用一个最小 WebDAV 服务端打真请求 ────────────────────────────── */
