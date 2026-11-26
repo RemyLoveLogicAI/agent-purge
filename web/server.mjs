@@ -294,7 +294,7 @@ async function handle(req, res, ctx = {}) {
 				assets: gh.assets || [],
 				error: gh.error
 			},
-			body: gh.body || (hasUpdate ? `发现新版本 v${latest}` : ""),
+			body: gh.body || (hasUpdate ? `New version v${latest} available` : ""),
 			htmlUrl: gh.htmlUrl || "https://github.com/ZiChuanLan/agent-purge/releases/latest"
 		});
 	}
@@ -306,18 +306,18 @@ async function handle(req, res, ctx = {}) {
 		const upgradeType = reqPayload?.type || installType;
 
 		// Source checkout: update by git pull in this directory, without downloading release artifacts.
-		// --ff-only 由 gitPullSelf 保证：从面板点出来的更新不该悄悄造一个合并提交。
+		// gitPullSelf enforces --ff-only so panel updates do not silently create merge commits.
 		if (upgradeType === "git") {
 			try {
 				const r = gitPullSelf();
-				const changed = r.changed ? `${r.before} → ${r.after}` : `已在 ${r.after}（无新提交）`;
+				const changed = r.changed ? `${r.before} → ${r.after}` : `Already at ${r.after} (no new commits)`;
 				return send(res, 200, {
 					ok: true,
 					type: "git",
 					version: r.after,
 					message: r.changed
-						? `已快进更新：${changed}。重启 agent-purge 后生效。`
-						: `当前分支 ${r.branch} 已是最新（${changed}）。`,
+						? `Fast-forwarded: ${changed}. Restart agent-purge to apply the update.`
+						: `Current branch ${r.branch} is up to date (${changed}).`,
 					output: r.output,
 					command: "git pull --ff-only",
 				});
@@ -344,7 +344,7 @@ async function handle(req, res, ctx = {}) {
 						resolve(send(res, 200, {
 							ok: true,
 							type: "npm",
-							message: "npm 全局安装已更新到最新版！请重启 agent-purge 服务以生效。",
+							message: "Global npm installation updated. Restart the agent-purge service to apply it.",
 							output: (stdout || "").trim(),
 							command: "npm install -g agent-purge@latest"
 						}));
@@ -367,13 +367,13 @@ async function handle(req, res, ctx = {}) {
 				await downloadFile(targetExe.downloadUrl, tempFile, undefined, { expectedSize: targetExe.size, digest: targetExe.digest });
 				replaceSelfExecutable(tempFile);
 			} finally { rmSync(tempFile, { force: true }); }
-			return send(res, 200, { ok: true, type: "exe", version: info.latest, message: "便携版 exe 已就地升级成功！下次启动即为新版本。" });
+			return send(res, 200, { ok: true, type: "exe", version: info.latest, message: "Portable exe updated in place. The new version will run at next launch." });
 		} else if (process.platform === "win32" && targetSetup) {
 			const tempSetup = join(tmpdir(), `agent-purge-setup-${randomUUID()}.exe`);
 			await downloadFile(targetSetup.downloadUrl, tempSetup, undefined, { expectedSize: targetSetup.size, digest: targetSetup.digest });
 			const { spawn } = await import("node:child_process");
 			spawn(tempSetup, [], { detached: true, stdio: "ignore" }).unref();
-			return send(res, 200, { ok: true, type: "setup", version: info.latest, message: "安装程序已启动，请按界面向导完成安装。" });
+			return send(res, 200, { ok: true, type: "setup", version: info.latest, message: "The installer has started. Follow its prompts to finish installation." });
 		}
 		return send(res, 400, { error: "No Windows upgrade installer was found in the Release. Download it manually from the release page." });
 	}
@@ -529,10 +529,10 @@ async function state(withVersions, ctx = {}) {
 		modes: MODES,
 		piAuto: st.piAuto === true,
 		ompAuto: st.ompAuto === true,
-		// 桌面端偏好 + WebDAV 备份账号（密码只报 hasPassword，从不回显）
+		// Desktop preferences and WebDAV backup account (expose only hasPassword, never the password).
 		settings: settingsOf(st),
 		locale: resolveLocale({ setting: settingsOf(st).language }),
-		// 桌面形态：由双击 exe / 桌面快捷方式拉起的窗口；终端托管的服务不算
+		// Desktop mode: a window launched by double-clicking the exe or desktop shortcut, not a terminal-managed service.
 		desktop: { managed: Boolean(ctx.desktop), autoExit: Boolean(ctx.autoExit), pid: process.pid },
 		shimDir: shims[0]?.dir ?? null,
 		slashes: slashes,
@@ -779,14 +779,14 @@ function saveDefaults(payload) {
 	return { ...report, defaults: loadState(DATA).state.default };
 }
 
-/* ── 设置页：桌面端偏好 + WebDAV 备份 ─────────────────────────────────────── */
+/* ── Settings page: desktop preferences and WebDAV backup ─────────────────────────────────────── */
 
 function settingsView(ctx = {}) {
 	const { state: st } = loadState(DATA);
 	return {
 		settings: settingsOf(st),
 		locale: resolveLocale({ setting: settingsOf(st).language }),
-		// 关窗退出这一条只在「双击 exe / 桌面窗口」形态下才有意义，脚本态终端托管要看终端
+		// Exit on close applies only to the desktop window; terminal-managed source mode follows the terminal.
 		desktop: {
 			managed: Boolean(ctx.desktop),
 			autoExit: Boolean(ctx.autoExit),
@@ -796,10 +796,10 @@ function settingsView(ctx = {}) {
 }
 
 function saveSettingsView(payload, ctx = {}) {
-	if (!plainObject(payload)) throw httpError(400, "设置载荷应为对象");
+	if (!plainObject(payload)) throw httpError(400, "Settings payload must be an object");
 	const next = saveSettings(DATA, { language: payload.language, theme: payload.theme, githubMirror: payload.githubMirror, desktop: payload.desktop, webdav: payload.webdav });
-	// 桌面形态下 exitPolicy 每次现读设置，所以改完立刻生效，不需要重启进程；
-	// 只有终端托管的服务不吃这条设置，如实说明。
+	// In desktop mode exitPolicy reads settings each time, so changes apply without restarting;
+	// terminal-managed services do not use this setting.
 	return {
 		ok: true,
 		settings: settingsOf(next),
@@ -809,12 +809,12 @@ function saveSettingsView(payload, ctx = {}) {
 }
 
 async function webdavAction(payload) {
-	if (!plainObject(payload)) throw httpError(400, "请求载荷应为对象");
+	if (!plainObject(payload)) throw httpError(400, "Request payload must be an object");
 	const action = payload.action;
-	if (!["test", "backup", "restore"].includes(action)) throw httpError(400, `未知的备份操作: ${action}`);
+	if (!["test", "backup", "restore"].includes(action)) throw httpError(400, `Unknown backup operation: ${action}`);
 	const { state: st } = loadState(DATA);
 	const settings = settingsWithSecret(st);
-	if (!settings.webdav.url) throw httpError(400, "先在设置里填 WebDAV 地址");
+	if (!settings.webdav.url) throw httpError(400, "Enter a WebDAV URL in settings first");
 
 	if (action === "test") return { ok: true, ...(await testWebdavConnection(settings)) };
 	if (action === "backup") {
@@ -822,13 +822,13 @@ async function webdavAction(payload) {
 		noteWebdavRun(DATA, { lastBackupAt: result.at });
 		return { ok: true, ...result };
 	}
-	// restore：先下载校验，再在配置锁里整段写回，避免和「保存人设 / 应用配置」交叉写同一个文件
-	if (payload.confirm !== true) throw httpError(400, "恢复会覆盖本机人设与设置，需要先确认");
+	// Restore: download and verify first, then write under the configuration lock to avoid concurrent writes.
+	if (payload.confirm !== true) throw httpError(400, "Restore will overwrite local personas and settings; confirmation is required");
 	const downloaded = await downloadBackup(settings);
 	const result = withControlLock(DATA, () => applyArchive(DATA, downloaded, { snapshotBefore: payload.snapshot !== false }));
 	pruneSnapshots(DATA, 10);
 	noteWebdavRun(DATA, { lastRestoreAt: new Date().toISOString() });
-	// 人设文件已经换过：立刻重建 store，并把 active.md 同步到恢复出来的人设
+	// Persona files have changed: rebuild the store and synchronize active.md with the restored persona.
 	store = createStore(DATA);
 	store.refreshActive();
 	const restoredActive = store.activeId();
@@ -1014,7 +1014,7 @@ function localHost(req) {
 	} catch { return false; }
 }
 const html = (res, ctx = {}) => {
-	// 每次发页面都换一个代号：/api/leave 只认自己那一代，旧页面的 beacon 晚到也不会误伤新页面
+	// Assign a new generation per page: /api/leave ignores stale page beacons.
 	const gen = String((ctx.gen = (ctx.gen ?? 0) + 1));
 	let locale = "en";
 	let theme = "auto";
@@ -1037,7 +1037,7 @@ const html = (res, ctx = {}) => {
 		.end(page);
 };
 
-// 刷新页面时 pagehide 会先于新页面的请求到达：留一个宽限期，让"关窗口"和"刷新"各归各位。
+// On reload pagehide arrives before the new request; allow a grace period to distinguish reload from close.
 const LEAVE_GRACE = 1500;
 function clearLeave(ctx) {
 	if (!ctx?.leaveTimer) return;
@@ -1049,9 +1049,9 @@ function isMutating(method) {
 	return method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
 }
 
-/** 浏览器跨站请求会带 Origin；curl/脚本没有，放行。有 Origin 就必须和 Host 同源。 */
+/** Browsers send Origin for cross-site requests; allow curl/scripts without it. If present, Origin must match Host. */
 function sameOrigin(req) {
-	// 先看浏览器声明的跨站属性：没有 Origin 的跨站请求（部分 fetch 场景）也要挡住
+	// Check browser cross-site metadata first to block cross-site requests without Origin too.
 	const site = req.headers["sec-fetch-site"];
 	if (site && site !== "same-origin" && site !== "none") return false;
 	const origin = req.headers.origin;
@@ -1077,41 +1077,41 @@ function body(req) {
 		};
 		const contentType = req.headers["content-type"];
 		if (contentType && !/^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;|$)/i.test(contentType)) {
-			req.resume(); finish(httpError(415, "请求应为 JSON")); return;
+			req.resume(); finish(httpError(415, "Request must be JSON")); return;
 		}
 		req.on("data", chunk => {
 			if (done) return;
 			size += chunk.length;
-			if (size > 2 * 1024 * 1024) { finish(httpError(413, "请求超过 2 MiB")); return; }
+			if (size > 2 * 1024 * 1024) { finish(httpError(413, "Request exceeds 2 MiB")); return; }
 			chunks.push(chunk);
 		});
 		req.once("end", () => {
 			if (done) return;
 			let value;
 			try { value = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
-			catch { finish(httpError(400, "JSON 格式无效")); return; }
-			if (!plainObject(value)) { finish(httpError(400, "JSON 应为对象")); return; }
+			catch { finish(httpError(400, "Invalid JSON")); return; }
+			if (!plainObject(value)) { finish(httpError(400, "JSON must be an object")); return; }
 			finish(null, value);
 		});
-		req.once("aborted", () => finish(httpError(400, "请求已中断")));
-		req.once("error", error => finish(httpError(400, `请求读取失败：${error.message}`)));
+		req.once("aborted", () => finish(httpError(400, "Request was aborted")));
+		req.once("error", error => finish(httpError(400, `Failed to read request: ${error.message}`)));
 	});
 }
 
-/** 桌面形态下「关窗是否退出」：每次现读 state.json，设置改了立刻生效。 */
+/** Desktop exit-on-close: read state.json each time so settings changes apply immediately. */
 function exitOnCloseNow() {
 	try { return settingsOf(loadState(DATA).state).desktop.exitOnClose; } catch { return true; }
 }
 
-// 只有被直接当脚本跑（node web/server.mjs --serve 7788）才自启动；
-// 被 bin 导入时必须保持安静——否则 `agent-purge web --serve 7789` 会两个端口各起一个实例，
-// 并在第二个 bind 时吐出误导性的“端口已被占用：老实例还在跑”。
-// 编译态 import.meta.url 也是 exe 路径，光比路径会把 exe 误当入口：只认 .mjs 脚本。
+// Start automatically only when run directly as a script (node web/server.mjs --serve 7788);
+// stay quiet when imported by bin, otherwise `agent-purge web --serve 7789` starts two instances on separate ports,
+// and a second bind produces a misleading port-in-use error.
+// In compiled mode import.meta.url also points to the exe; require an .mjs script rather than matching paths alone.
 const selfPath = fileURLToPath(import.meta.url);
 const isEntry = Boolean(process.argv[1]) && selfPath.endsWith(".mjs") && resolve(process.argv[1]) === selfPath;
 if (isEntry && process.argv.includes("--serve")) {
 	const servePort = Number(process.argv[process.argv.indexOf("--serve") + 1] ?? 7788);
-	// 单例：源码态 `web --detach` 直接跑的就是这个入口，同样要登记实例
+	// Singleton: source-mode `web --detach` uses this entry point and must register the instance.
 	ensureDataHome(isCompiled() ? null : ROOT);
 	const claim = registerInstance(dataHome(), servePort);
 	if (!claim.ok) {
@@ -1125,7 +1125,7 @@ if (isEntry && process.argv.includes("--serve")) {
 	serveWeb(servePort, {
 		autoExit: process.argv.includes("--auto-exit"),
 		desktop: process.argv.includes("--desktop"),
-		// 关窗退不退现读设置：改成常驻后不用重启已经起着的服务
+		// Read exit-on-close settings live so switching to persistent mode needs no service restart.
 		exitPolicy: () => (process.argv.includes("--desktop") ? exitOnCloseNow() : true),
 		windowAlive: () => windowAliveIn(dataHome(), servePort),
 	});
