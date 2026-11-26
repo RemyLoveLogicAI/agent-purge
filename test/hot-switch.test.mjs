@@ -95,7 +95,7 @@ test('pi 1.5.x replace strips identity & <docs> while preserving custom <docs>, 
 
  // /purge reload 给明确回显
  await commands.purge.handler('reload', { ui: { notify: (msg) => notes.push(msg) } });
- assert.match(notes.at(-1), /已重读/);
+ assert.match(notes.at(-1), /Reloaded/);
 });
 test('pi/omp off cleans residual resident agent-purge block from host system prompt', async () => {
  state('replace', 'b'); const hooks = {}, commands = {};
