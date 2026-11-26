@@ -1,43 +1,42 @@
-# 界面一览
+# Console and interfaces
 
-![agent-purge 控制台总览](/images/console-desktop.png)
+![agent-purge console overview](/images/console-desktop.png)
 
-## 控制台
+## Console
 
-系统提示词接管在**「控制台」**。每家工具一行，能直接看到状态、通道、力度与生效时机；点开右侧详情可以单独覆写人设与力度、试跑一次看实际命令，以及断开该家的接管。
+System-prompt takeover is managed in the **Console**. Each tool has a row showing its status, channels, mode, and when changes take effect. Expand the details on the right to override its persona and mode, dry-run the actual command, or disconnect that tool.
 
-![agent-purge 工具详情与安全试跑](/images/console-detail.png)
+![agent-purge tool details and safe dry run](/images/console-detail.png)
 
-- **状态**区分「已开启 / 已暂停 / 失败 / 项目文件」四种
-- **通道**按实测能力显示可用项，不支持的直接置灰并说明原因，不摆假开关
-- **试跑**（`--dry-run`）只打印将要执行的命令，不落盘、不启动
+- **Status** distinguishes enabled, paused, failed, and project file states.
+- **Channels** show options supported by measured capabilities. Unsupported options are disabled with an explanation rather than presenting fake switches.
+- **Dry run** (`--dry-run`) prints the command that would run without writing files or starting a process.
 
-## 规则文件
+## Rule files
 
-项目目录及各家全局规则文件（`AGENTS.md` / `CLAUDE.md` / `QWEN.md` / `CRUSH.md` / `.clinerules` / `.roorules`）统一在**「规则文件」**页按作用范围与指定人设写入。
+Manage project directories and global rule files for each tool (`AGENTS.md`, `CLAUDE.md`, `QWEN.md`, `CRUSH.md`, `.clinerules`, and `.roorules`) from the **Rule Files** page, by scope and selected persona.
 
-![agent-purge 规则文件](/images/project-rules.png)
+![agent-purge rule files](/images/project-rules.png)
 
-- 支持**全局 / 项目**两种作用范围
-- 写入前提供 diff 预览与 SHA 冲突检测
-- 默认追加托管块，随时可无损移除
+- Supports global and project scopes.
+- Provides a diff preview and SHA conflict detection before writing.
+- Appends a managed block by default, which can be removed without loss at any time.
 
-## 人设库
+## Persona library
 
-编辑人设正文与元数据、复制、导入、从仓库拉取。正文决定提示词，名称与说明只用于管理。
+Edit persona text and metadata, copy, import, or pull personas from a repository. The body determines the prompt; names and descriptions are used only for management.
 
-## 移动端
+## Mobile
 
-窄屏下控制台折为单列，通道与状态仍然可见。
+On narrow screens the console collapses to a single column while channels and status remain visible.
 
+![Mobile layout](/images/console-mobile.png)
 
-![移动端布局](/images/console-mobile.png)
+## Appearance and theme
 
-## 外观与主题
+The console offers light and dark color schemes and follows the system by default.
 
-控制台有浅色与深色两套配色，默认跟随系统。
-
-- 顶栏右侧的日/月按钮在浅色与深色之间一键切换，立即生效并保存
-- 「设置」页的「外观主题」是三态：自动（跟随系统）/ 浅色 / 深色
-- 首屏由服务端按已保存的主题注入 `data-theme`，深色下不会先闪一下白底
-- 深色配色经过 WCAG 2.1 AA 对比度校验，浏览器端到端用例覆盖五个页面
+- The sun/moon button at the right of the top bar switches between light and dark immediately and saves the choice.
+- The appearance setting has three states: automatic (follow system), light, and dark.
+- The server injects `data-theme` from the saved setting on first render, avoiding a white flash in dark mode.
+- The dark palette is checked against WCAG 2.1 AA contrast requirements, with browser end-to-end tests covering five pages.
