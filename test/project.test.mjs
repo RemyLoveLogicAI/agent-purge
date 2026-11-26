@@ -269,7 +269,7 @@ test("project：旧安装从账本找回目录，路径记录丢失时失败而�
 	inDirectory(other, () => {
 		const result = applyConfiguration(missing.root, { persona: "beta" });
 		assert.equal(result.ok, false);
-		assert.match(result.results[0].error, /项目.*(目录|路径)/);
+		assert.match(result.results[0].error, /project.*directory/i);
 		assert.equal(existsSync(join(other, "AGENTS.md")), false);
 	});
 });
