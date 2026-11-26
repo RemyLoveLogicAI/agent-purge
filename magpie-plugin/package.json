@@ -3,13 +3,13 @@
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
-	"description": "把 agent-purge 的人设写进每次 agent 请求的 system 段",
+	"description": "Inject the agent-purge persona into the system section of each agent request",
 	"magpie": {
 		"hooks": "./hooks.js",
 		"page": {
 			"title": "Persona",
 			"titles": {
-				"zh": "人设"
+				"zh": "Persona"
 			},
 			"file": "page/index.html"
 		}
