@@ -1,13 +1,13 @@
-# 一時停止とアンインストール
+# Pause and uninstall
 
-## 一時停止か解除か
+## Pause or undo changes
 
-| 目的 | コマンド | ユーザーペルソナ |
+| Purpose | Command | User personas |
 |---|---|---|
-| 一時停止 / 元の範囲へ復帰 | `agent-purge pause` / `agent-purge resume` | 保持 |
-| 1 ホストの常駐設定のみ解除 | `agent-purge uninstall dsh` | 保持（他のチャネルは不変） |
-| 1 ホストの全チャネルを解除 | `agent-purge disarm dsh` | 保持 |
-| 登録済みの接管をすべて解除 | `agent-purge clean` | 保持 |
+| Temporarily pause / resume the previous scope | `agent-purge pause` / `agent-purge resume` | Retained |
+| Undo one persistent configuration only | `agent-purge uninstall dsh` | Retained; other channels unchanged |
+| Undo all selected channels for one harness | `agent-purge disarm dsh` | Retained |
+| Undo all registered takeovers | `agent-purge clean` | Retained |
 
 ```bash
 agent-purge pause
@@ -16,24 +16,24 @@ agent-purge disarm dsh
 agent-purge clean
 ```
 
-## プログラムの削除
+## Uninstall the program
 
-先に接管を解除してから削除します：
+When uninstalling the npm program, undo takeovers before removing it:
 
 ```bash
 agent-purge clean
 npm uninstall -g agent-purge
 ```
 
-Windows インストーラーのアンインストールも接管を解除し、ペルソナは保持します。復元競合が起きた場合は、エラーが示すファイルと認証情報を保持し、差分を確認してから対処してください。**バックアップを直接削除しないでください。** 過去のセッションで送信済みの内容は取り消せません。
+The Windows installer uninstaller also undoes takeovers and retains personas. If a restore conflict occurs, keep the files and credentials named in the error and compare changes before proceeding; **do not simply delete the backup**. Content already sent in past sessions cannot be recalled.
 
-## データの完全削除
+## Permanently delete data
 
-先にバックアップし、[CLI リファレンス](/reference/cli#pause-undo-and-uninstall)のアンインストール節に従ってください。`self-uninstall --yes` は通常のアンインストールとは動作が異なります。
+To permanently delete data, back up first, then follow the [uninstall section of the CLI reference](/reference/cli#pause-undo-and-uninstall). `self-uninstall --yes` is different from a normal uninstall.
 
-## プライバシー境界
+## Privacy boundaries
 
-- **ローカル管理**：既定のデータディレクトリは `~/.agent-purge/`（Windows は `C:\Users\<ユーザー>\.agent-purge\`）。`AGENT_PURGE_HOME` で変更でき、更新で上書きされません。
-- **モデルリクエストは依然として外部通信**：有効化するとペルソナはホストのリクエストとともに設定先のモデルサービスへ送られます。ローカル管理はオフライン動作ではありません。更新確認も GitHub へアクセスします。
-- **ホストの権限は変更しません**：プロンプトと設定入口を管理するのみで、ホストの破解や認可の回避は行いません。書き換え後のモデル挙動も保証しません。
-- **管理権限のある環境でのみ使用**：Web は `127.0.0.1` のみをリッスンします。公開網に晒さないでください。全文は[法的情報](/ja/LEGAL)にあります。
+- **Local management**: The default data directory is `~/.agent-purge/`, or the corresponding `.agent-purge` directory under the Windows user profile. Override it with `AGENT_PURGE_HOME`. Program upgrades do not overwrite this directory.
+- **Model requests still use the network**: Once enabled, personas are sent with host requests to the configured model service. Local management does not mean offline operation. Update checks also contact GitHub.
+- **Host permissions are not directly changed**: The project manages prompts and configuration entry points; it does not crack hosts or bypass authorization, and does not guarantee model behavior after rewriting.
+- **Use only in environments you are authorized to manage**: The Web console listens only on `127.0.0.1`; do not expose it directly to the public internet. See the [compliance statement](/LEGAL) for the full requirements.

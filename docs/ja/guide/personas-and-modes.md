@@ -1,51 +1,53 @@
-# ペルソナとモード
+# Personas and modes
 
-ペルソナの Markdown 本文がエージェントに注入されるプロンプトになります。名前と説明は管理用です。
+The persona body determines the prompt provided to the harness; its name and description are only for management. The first run creates the `neutral` starter template. Edit it in the Web console or create your own Markdown file.
 
 ```bash
-agent-purge ls                       # ペルソナ一覧
-agent-purge use <id>                 # 切り替えて選択範囲を同期
-agent-purge mode append              # 全体の注入モードを変更
-agent-purge use <id> --for codex     # Codex にのみ個別指定
-agent-purge use follow --for codex   # Codex を全体追従に戻す
+agent-purge ls                       # List personas
+agent-purge use <id>                 # Switch and synchronize selected scopes
+agent-purge mode append              # Change the global mode
+agent-purge use <id> --for codex     # Assign a persona only to Codex
+agent-purge use follow --for codex   # Follow the global setting again
 ```
 
-## 4 つの注入モード
+## Four modes
 
-| モード | 動作 | 備考 |
+| Mode | Behavior | Notes |
 |---|---|---|
-| `replace`（既定） | ホストの身元行を優先置換し、その他の指示は極力保持 | 判定は近似。プロンプト読み取り口のない起動引数型は strict として実行 |
-| `strict` | 制御可能な入口のホストプロンプトをペルソナで置換 | 既存の指示も消える。ホストが外側に付けるラッパーは残りうる |
-| `append` | ホストの指示を保持し、ペルソナを追加注入 | 元の身元が残るため指示の競合に注意 |
-| `off` | 対象入口への注入を停止 | 全体の一時停止と単発引数はスコープが異なる |
+| `replace` (default) | Prefer replacing host identity lines while preserving other instructions where possible | Identity detection is approximate; launch entry points that cannot read host text use strict behavior |
+| `strict` | Replace host text in the controllable entry point with the persona | Existing instructions in that entry point are also removed; the host may still add other text |
+| `append` | Keep host instructions and add a persona | Does not replace the original identity; watch for conflicting rules |
+| `off` | Stop injection at that entry point | Global pause and one-time launch arguments have different scopes |
 
-**strict は「モデルがペルソナだけを受け取る」ことを保証しません。** 実際のロールはホストとチャネルに応じて `system`、`developer`、プロジェクトコンテキストになります。迷ったら `append` を先に試してください。
+**Strict does not mean the model receives only the persona.** The actual role may be `system`, `developer`, or project context, depending on the host and channel. To preserve host instructions, try `append` first.
 
-モードが決めるのは**注入するテキストの書き方**であり、**注入先**ではありません。ホストが system prompt 全体の入口を持たない場合、4 つのモードはいずれも追記になります。詳細は[対応状況](/ja/reference/support)。
+The mode determines **how injected text is written**, not **where it is injected**. When the host has no full system-prompt entry point, all four modes only append. See the per-host [support matrix](/reference/support).
 
-## ペルソナを手書きする
+## Write a persona
 
-以下を `~/.agent-purge/personas/concise.md` として保存し、`agent-purge use concise` を実行します：
+Save the following as `~/.agent-purge/personas/concise.md`, then run `agent-purge use concise`:
 
 ```markdown
 ---
 id: concise
-name: 簡潔な協働
-description: 結論を先に、変更前にコードを読む
+name: Concise collaboration
+description: English, conclusion first, read code before editing
 ---
 
-結論を先に、根拠を後に述べる。
-変更前に既存実装を読み、不明点は明示する。
+Collaborate in English. Give the conclusion first, then the evidence.
+Read the existing implementation before changing code; state uncertainty clearly.
 ```
 
-プロンプトに入るのは本文だけです。`description` は一覧用メタデータで、旧キー `desc` も引き続き有効です。Web 編集は触れていないメタデータを保持します。
+Only the body enters the prompt. `description` is used in listings; the older `desc` key is still supported. Web editing preserves unrelated metadata. See the [CLI reference](/reference/cli#persona-files) for advanced matching, ordering, and data-directory configuration.
 
-## ペルソナの入手元
+The maintainer's [some-magic persona repository](https://github.com/ZiChuanLan/some-magic) is another reference.
 
-- **Web エディタ** — ペルソナライブラリで本文とメタデータを編集
-- **ローカル取り込み** — `agent-purge persona import <dir>` で `.md` を一括取り込み
-- **リポジトリ取得** — `agent-purge pull [repo]`、既定は GitHub
+## Persona sources
 
-## ホスト単位の上書き
+- **Web editor**: edit body and metadata on the persona library page.
+- **Local import**: `agent-purge persona import <dir>` bulk-imports `.md` files from a directory.
+- **Repository pull**: `agent-purge pull [repo]` pulls from GitHub by default.
 
-コンソールの各ホスト詳細で、ペルソナとモードを個別に指定して全体既定を上書きできます。上書きはそのホストにのみ作用し、「全体に追従」に戻せば解除されます。
+## Override per host
+
+Each host's details in the console let you override the global persona and mode. The override affects only that host; select follow global to return to the default.

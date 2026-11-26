@@ -1,15 +1,15 @@
-# 適用範囲
+# Application scope
 
-ホストが提供する接管入口は 1 つではなく、到達範囲と反映タイミングがそれぞれ異なります。どの層までカバーするかを決めてからチャネルを選びます。
+Hosts expose more than one takeover entry point, with different scopes and activation times. Decide which layer you want to cover before choosing a channel.
 
-## 4 つのチャネル
+## Four channels
 
-| チャネル | 役割 | 反映タイミング |
+| Channel | What it does | When it takes effect |
 |---|---|---|
-| `install` | ホストの管理設定やプラグインを書き込む | 静的設定は新規セッション、読み込み済みの動的プラグインは次ターン |
-| `shim` | PATH 上の同名コマンド経由で起動を転送 | そのコマンドからの次回起動 |
-| `slash` | セッション内 `/purge` 拡張を導入 | ホスト拡張の有効状態に依存 |
-| `project` | 指定ディレクトリのプロジェクトルールファイルを書き込む | そのディレクトリの新規セッション |
+| `install` | Writes managed host configuration or a plugin | Static configuration requires a new session; a loaded dynamic plugin reads it on the next turn |
+| `shim` | Forwards launches through a command of the same name on PATH | Next launch using that command |
+| `slash` | Installs the in-session `/purge` extension | Depends on host extension and enabled state |
+| `project` | Writes project rule files in a specified directory | New sessions in that directory |
 
 ```bash
 agent-purge install codex
@@ -18,29 +18,29 @@ agent-purge project on pi --dir /path/to/project
 agent-purge status
 ```
 
-`arm <h>` はそのホストで利用可能な常駐・コマンド・slash チャネルを順に試し、結果を項目ごとに報告します。プロジェクトチャネルは別途指定します。同じペルソナが複数入口から供給されると重複するため、必要な範囲だけを有効化してください。
+`arm <h>` attempts every persistent, command, and slash channel available for that harness and reports each result. The project channel must be selected separately. A persona may be duplicated if it is provided through multiple entry points, so enable only the scopes you need.
 
-## 単発利用
+## One-time use
 
-一度だけ使いたい場合は、常駐チャネルを登録せず agent-purge 経由で起動します：
+For one-time use, launch through agent-purge without registering a persistent channel:
 
 ```bash
 agent-purge codex --mode append
-agent-purge pi --ask "このコードを説明して"
-agent-purge codex -- --help          # -- 以降の引数はホストへ渡されます
+agent-purge pi --ask "Explain this code"
+agent-purge codex -- --help          # Arguments after -- go to the host
 ```
 
-## 反映タイミングが違う理由
+## Why activation timing differs
 
-- **セッション内ホットスイッチ**（`command` / `state`）：毎ターン system を再構築します。Pi、pi-desktop、omp は `before_agent_start` フック、OpenCode と dsh は毎ターン状態を読むプラグインを使います。設定変更は次ターンで反映されます。
-- **新規セッションが必要**：system は起動時に一度だけ構築されます。Claude、Codex、Grok、Kiro、Antigravity などが該当し、変更後はセッションを開き直す必要があります。
+- **In-session hot switching** (`command` / `state`): The process rebuilds the system prompt each turn. Pi, pi-desktop, and omp use the `before_agent_start` hook; OpenCode and dsh plugins read state each turn. Settings changes apply on the next turn. Exception: pi-desktop sends replacement as a mid-session system patch, so a model that does not accept the patch will not show the change in that session.
+- **New session required**: `system` is assembled only at startup. Claude, Codex, Grok, Kiro, Antigravity, and others fall into this group; reopen the session after changes.
 
-ホスト別のホットスイッチ可否は[対応状況](/ja/reference/support)にあります。
+See the [support matrix](/reference/support) for each host's hot-switch capabilities.
 
-## プロジェクトルールの共有
+## Shared project rules
 
-同じルールをディレクトリ単位でホストのルールファイルに書き込めます。「このリポジトリは簡潔な文体、他は既定のまま」といった使い方に向きます。書き込み前の diff プレビューと、解除時の元バイト復元に対応します。
+The same rule can be written into a host's own rule file for a directory, for sessions in that directory to read. This suits cases such as using a concise style in one repository while leaving others at their defaults. A diff preview is available before writing, and undo restores the original bytes.
 
-## magpie ゲートウェイ
+## magpie gateway
 
-magpie ゲートウェイを使う場合、任意プラグインはリポジトリの `magpie-plugin/` ディレクトリにあり、リポジトリ直下ではありません。導入手順とゲートウェイ側の書き換え境界は同ディレクトリの README に記載しています。
+The optional magpie gateway plugin is in the repository's `magpie-plugin/` directory, not its root. See that directory's README for installation and the gateway's rewriting boundaries.

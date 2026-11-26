@@ -1,33 +1,42 @@
-# コンソール
+# Console and interfaces
 
-![agent-purge コンソール](/images/console-desktop.png)
+![agent-purge console overview](/images/console-desktop.png)
 
-## コンソール画面
+## Console
 
-システムプロンプトの接管は**コンソール**で行います。ホストごとに 1 行で状態・チャネル・モード・反映タイミングを表示し、行を開くと個別のペルソナ／モード上書き、試走、接続解除ができます。
+System-prompt takeover is managed in the **Console**. Each tool has a row showing its status, channels, mode, and when changes take effect. Expand the details on the right to override its persona and mode, dry-run the actual command, or disconnect that tool.
 
-![agent-purge ツール詳細パネル](/images/console-detail.png)
+![agent-purge tool details and safe dry run](/images/console-detail.png)
 
-- **状態**：有効 / 一時停止 / 失敗 / プロジェクトファイルのみ
-- **チャネル**：実測で動くものだけを表示し、非対応は理由つきでグレーアウト（偽のスイッチは置きません）
-- **試走**（`--dry-run`）：実行予定のコマンドを表示するだけで、書き込みも起動もしません
+- **Status** distinguishes enabled, paused, failed, and project file states.
+- **Channels** show options supported by measured capabilities. Unsupported options are disabled with an explanation rather than presenting fake switches.
+- **Dry run** (`--dry-run`) prints the command that would run without writing files or starting a process.
 
-## プロジェクトルール
+## Rule files
 
-プロジェクトディレクトリと各ホストのグローバルルールファイル（`AGENTS.md` / `CLAUDE.md` / `QWEN.md` / `CRUSH.md` / `.clinerules` / `.roorules`）は**「ルールファイル」**ページで、スコープとペルソナを指定して書き込みます。
+Manage project directories and global rule files for each tool (`AGENTS.md`, `CLAUDE.md`, `QWEN.md`, `CRUSH.md`, `.clinerules`, and `.roorules`) from the **Rule Files** page, by scope and selected persona.
 
-![agent-purge プロジェクトルール](/images/project-rules.png)
+![agent-purge rule files](/images/project-rules.png)
 
-- グローバル / プロジェクトの 2 スコープ
-- 書き込み前の diff プレビューと SHA 競合検出
-- 既定では管理ブロックを追記し、いつでも無損失で除去可能
+- Supports global and project scopes.
+- Provides a diff preview and SHA conflict detection before writing.
+- Appends a managed block by default, which can be removed without loss at any time.
 
-## ペルソナライブラリ
+## Persona library
 
-本文とメタデータの編集、複製、取り込み、リポジトリからの取得。本文がプロンプトになり、名前と説明は管理用メタデータです。
+Edit persona text and metadata, copy, import, or pull personas from a repository. The body determines the prompt; names and descriptions are used only for management.
 
-## ナロースクリーン
+## Mobile
 
-狭い画面では 1 カラムに折り畳まれ、チャネルと状態は引き続き表示されます。
+On narrow screens the console collapses to a single column while channels and status remain visible.
 
-![モバイルレイアウト](/images/console-mobile.png)
+![Mobile layout](/images/console-mobile.png)
+
+## Appearance and theme
+
+The console offers light and dark color schemes and follows the system by default.
+
+- The sun/moon button at the right of the top bar switches between light and dark immediately and saves the choice.
+- The appearance setting has three states: automatic (follow system), light, and dark.
+- The server injects `data-theme` from the saved setting on first render, avoiding a white flash in dark mode.
+- The dark palette is checked against WCAG 2.1 AA contrast requirements, with browser end-to-end tests covering five pages.

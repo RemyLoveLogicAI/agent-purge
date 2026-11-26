@@ -1,60 +1,56 @@
-# はじめに
+# Getting started
 
-## 動作要件
+## Requirements
 
-**Node.js 20+** と、管理対象のコーディングエージェントがローカルにインストールされている必要があります。agent-purge 自体はモデルも認証情報も同梱しません。
+You need **Node.js 20 or later** and must first install the coding agents you want to manage locally. agent-purge does not bundle models or credentials.
 
-## インストール
+## Install
 
 ```bash
 npm install -g agent-purge
 agent-purge web
 ```
 
-グローバルインストールなしで直接実行することもできます：
+You can also run `npx agent-purge web` without installing globally.
 
-```bash
-npx agent-purge web
-```
+## Get started in three steps
 
-## 最初の 3 ステップ
+1. In **Personas**, edit the starter template or create a persona. Bulk pulls from GitHub repositories or local directories are supported.
+2. Return to the **Console**, select a persona and default mode, save settings, then enable the target tools or open their details to tune channels.
+3. Under **Rule Files**, append managed rule blocks to selected project directories or global configuration directories. Blocks are appended to the existing file by default and can be removed without loss.
 
-1. 「ペルソナライブラリ」で初期テンプレートを編集するか、新しいペルソナを作成します。
-2. 「コンソール」でペルソナとモードを選んで保存し、対象エージェントを有効化します。
-3. エージェントごとの案内に従い、プラグインを再読み込みするか新規セッションを開始します。
+The console normally listens on `http://127.0.0.1:7788`. If the port is reserved or in use, it falls forward to an available port in `7890–7909` and opens a standalone desktop window. The thin package and installer use the bundled WebView2 window host; without WebView2, they fall back to Chrome or Edge `--app` mode. The desktop app is single-instance: launching again brings the open window to the foreground. The Settings page controls appearance (automatic, light, or dark, also switchable with the top-bar sun/moon button), close behavior (quit or stay in the background and whether to confirm), and WebDAV backup. Changes apply immediately. **No tool is automatically armed on first launch.**
 
-コンソールは既定で `http://127.0.0.1:7788` をリッスンします。ポートが予約済み・使用中の場合は `7890–7909` の空きポートへ順に移り、独立したデスクトップウィンドウを開きます。デスクトップ版は単一インスタンスで、再起動しても既存のウィンドウを前面に出すだけです。ウィンドウを閉じたときの動作（終了する／サービスを残す、閉じる前に確認するか）と WebDAV バックアップは「設定」ページで変更でき、すぐ反映されます。**初回起動時に何も自動接収しません。**
+## Platforms and installation formats
 
-## インストール形式
-
-| 形式 | 動作要件 | 用途 |
+| Format | Requirements | Use |
 |---|---|---|
-| npm | Node.js 20+ | 標準的なクロスプラットフォーム導入・更新 |
-| `agent-purge-<version>-setup.exe` | Windows、外部 Node.js 20+ | GUI インストール・アンインストール |
-| `agent-purge-<version>.zip` | Windows、外部 Node.js 20+ | 解凍して利用するポータブル版 |
-| `agent-purge.exe` | Windows x64、ランタイム内蔵 | Node 未導入環境向けのスタンドアロン版 |
-| `agent-purge-<version>-darwin-arm64.dmg` / `x64.dmg` | macOS 12+（ランタイム内蔵） | 未署名 `.app`。初回は右クリック→開く、または `xattr -cr` |
-| `agent-purge-<version>-linux-x64` / `-linux-arm64` | 主要 Linux ディストリビューション | 単一バイナリ。`chmod +x` で実行 |
-| `agent-purge-<version>-linux-<arch>.tar.gz` | 主要 Linux ディストリビューション | `.desktop`、アイコン、root 不要の `install.sh` を含む |
-| `agent-purge-<version>-linux-<arch>.deb` | Debian / Ubuntu 系 | `sudo apt install ./*.deb` |
-| `agent-purge-<version>-linux-<arch>.AppImage` | 主要 Linux ディストリビューション（生成時のみ） | ダブルクリック、または `--appimage-extract-and-run` |
+| npm | Node.js 20+ | Install and upgrade with npm |
+| `agent-purge-<version>-setup.exe` | Windows, external Node.js 20+ | Graphical installation and removal |
+| `agent-purge-<version>.zip` | Windows, external Node.js 20+ | Extract and run |
+| `agent-purge.exe` | Windows x64, bundled runtime | Standalone portable executable without a separate Node installation |
+| `agent-purge-<version>-darwin-arm64.dmg` / `x64.dmg` | macOS 12+ (Apple Silicon / Intel, bundled runtime) | Unsigned `.app` disk image; drag into `/Applications`, then right-click Open or use `xattr -cr` on first launch |
+| `agent-purge-<version>-linux-x64` / `-linux-arm64` | Major Linux distributions, bundled runtime | Single-file binary; run after `chmod +x` |
+| `agent-purge-<version>-linux-<arch>.tar.gz` | Major Linux distributions | Portable package with `.desktop`, icon, and root-free `install.sh` |
+| `agent-purge-<version>-linux-<arch>.deb` | Debian, Ubuntu, and derivatives | `sudo apt install ./*.deb`; registers `/usr/bin/agent-purge` and a desktop entry |
+| `agent-purge-<version>-linux-<arch>.AppImage` | Major Linux distributions, when available | Double-click or use `--appimage-extract-and-run` to launch the console |
 
-バイナリは [GitHub Releases](https://github.com/ZiChuanLan/agent-purge/releases) から取得してください。未リリース版には添付がありません。SHA-256 と署名状態を確認してください。ZIP 内の EXE は薄いランチャーであり、スタンドアロン版ではありません。
+Available downloads are listed in [GitHub Releases](https://github.com/ZiChuanLan/agent-purge/releases); unreleased versions have no attachments. Check SHA-256 and signature status. Unsigned programs can trigger system warnings. The EXE inside the ZIP is a thin launcher, not the standalone version with a bundled runtime.
 
-SSH / WSL などヘッドレス環境では `agent-purge web --no-open` を使います。Web はループバックのみをリッスンします。
+For SSH, WSL, and other environments without a desktop, use `agent-purge web --no-open`. The Web console listens only locally. On Linux, use npm, source, or release binaries, `.tar.gz`, or `.deb`; an AppImage is optionally generated depending on runner capabilities. On macOS, use npm, source, or a `.dmg` image; the `.dmg` is not signed or notarized by Apple. See [compatibility](/reference/compatibility) for platform verification coverage.
 
-## アップグレード
+## Upgrade
 
-コンソール右上のバージョンバッジが、インストール形態に応じた更新経路を開きます：
+The version badge in the upper right of the console opens the upgrade path appropriate to the installation:
 
-- スタンドアロン EXE：ダウンロードしてその場で差し替え
-- npm グローバル：`npm install -g` を実行
-- **ソースチェックアウト**（`git clone` 後に `node bin/agent-purge.mjs`）：インストールディレクトリで `git pull --ff-only` を実行し、リリース成果物は取得しません
+- Standalone EXE: download and replace in place.
+- Global npm installation: run `npm install -g`.
+- **Source checkout** (`git clone`, then run `node bin/agent-purge.mjs`): run `git pull --ff-only` in the installation directory; no release artifacts are downloaded.
 
-ソースチェックアウトの更新判定は上流コミットで行うため、バージョン番号が同じでも更新と表示されることがあります。未コミットの変更、detached HEAD、上流のないブランチでは理由を添えて拒否します。
+For a source checkout, update detection compares upstream commits and can report updates even if the version number has not changed. It refuses and explains why if the working tree has uncommitted changes, HEAD is detached, or the branch has no upstream.
 
-## 次に読む
+## Next steps
 
-- [ペルソナとモード](/ja/guide/personas-and-modes) —— 4 つのモードが実際に変えるもの
-- [適用範囲](/ja/guide/scope) —— 単発起動・常駐・コマンド接管・プロジェクトルール
-- [対応状況](/ja/reference/support) —— ホスト別の実測浄化と残留
+- [Personas and modes](/guide/personas-and-modes): what the four modes change.
+- [Application scope](/guide/scope): one-time launch, persistent, command takeover, and project rule channels.
+- [Support matrix](/reference/support): measured purge and residue for each host.
