@@ -106,7 +106,7 @@ test('clean with a corrupt state reports the original error without a secondary 
     writeFileSync(join(env.AGENT_PURGE_HOME, 'state.json'), '{broken');
     const result = spawnSync(process.execPath, [resolve('bin/agent-purge.mjs'), 'clean', '--keep-failed'], { env, encoding: 'utf8' });
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /state.json 损坏/);
+    assert.match(result.stdout, /state.json is corrupt/);
     assert.doesNotMatch(result.stderr, /TypeError/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

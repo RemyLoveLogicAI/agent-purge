@@ -231,7 +231,7 @@ test("clean --keep-failed：配置损坏仍是硬失败，返回完整结果而�
 	const result = clean(root, { keepFailed: true });
 	assert.equal(result.ok, false);
 	assert.deepEqual(result.skipped, []);
-	assert.match(result.steps[0].detail, /state.json 损坏/);
+	assert.match(result.steps[0].detail, /state.json is corrupt/);
 	assert.equal(readFileSync(join(root, "state.json"), "utf8"), "{broken");
 });
 

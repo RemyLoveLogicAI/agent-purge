@@ -55,11 +55,11 @@ test("报告损坏时按未实测处理，不抛给调用方", () => {
 	});
 });
 test("证据状态区分未捕获、启动失败、暂停通过、真正未命中与隔离命中", () => {
-	assert.equal(verificationEvidence(null).label, "未实测");
-	assert.equal(verificationEvidence({ status: "missing" }).label, "未找到入口");
-	assert.equal(verificationEvidence({ status: "blocked" }).label, "验证受阻");
-	assert.equal(verificationEvidence({ status: "no-request", modes: [] }).label, "未捕获请求");
-	assert.equal(verificationEvidence({ status: "error", modes: [mode(["system"], 1)] }).label, "验证出错");
+	assert.equal(verificationEvidence(null).label, "Not tested");
+	assert.equal(verificationEvidence({ status: "missing" }).label, "Entry point not found");
+	assert.equal(verificationEvidence({ status: "blocked" }).label, "Verification blocked");
+	assert.equal(verificationEvidence({ status: "no-request", modes: [] }).label, "No request captured");
+	assert.equal(verificationEvidence({ status: "error", modes: [mode(["system"], 1)] }).label, "Verification error");
 	assert.equal(verificationEvidence({ status: "captured", modes: [{ ...mode(["system"], 0), mode: "off" }] }).state, "off-verified");
 	assert.equal(verificationEvidence({ status: "mismatch", modes: [mode(["system"], 0)] }).state, "miss");
 	assert.equal(verificationEvidence({ status: "captured", modes: [mode(["developer"], 1)] }).state, "verified");
@@ -71,8 +71,8 @@ test("证据状态区分未捕获、启动失败、暂停通过、真正未命�
 		{ kind: "main", roles: ["system"], markerCount: 1 }, { kind: "auxiliary", roles: ["system"], markerCount: 0 },
 	] }] }).state, "verified", "标题等辅助请求不得改变主请求判定");
 	assert.equal(sysHit({ modes: [{ requests: [{ kind: "auxiliary", roles: ["system"], markerCount: 1 }] }] }), false);
-	assert.match(captureScopeLabel({ kind: "isolated-cli", profile: "headless" }), /隔离 CLI.*headless/);
-	assert.match(captureScopeLabel(null), /未记录入口/);
+	assert.match(captureScopeLabel({ kind: "isolated-cli", profile: "headless" }), /Isolated CLI.*headless/);
+	assert.match(captureScopeLabel(null), /entry point not recorded/);
 });
 test("失败进程或暂停捕获不能被登记为人设能力已验证", () => {
 	withRoot(root => {
