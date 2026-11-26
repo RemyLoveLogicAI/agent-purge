@@ -1,6 +1,6 @@
-// 假 DOM + 假 magpie，直接跑真实的 page/app.js。
-// 真页面跑在 magpie 沙箱里，这里只验逻辑：搜索过滤、options 合并（agents 不丢）、
-// 连点不丢、Save failed回滚。跑法：node test/magpie/page.test.mjs
+// Fake DOM and magpie run the actual page/app.js.
+// The real page runs in a magpie sandbox; test search filtering and options merging without losing agents,
+// rapid clicks and rollback on Save failed. Run: node test/magpie/page.test.mjs
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
@@ -61,7 +61,7 @@ const ids = [
 	"add-agent-btn",
 ];
 const nodes = Object.fromEntries(ids.map((id) => [id, new Node()]));
-// index.html 上 #status / #import-err 带 hidden，app.js 必须自己解开它
+// #status / #import-err are hidden in index.html; app.js must unhide them.
 nodes.status.hidden = true;
 nodes["import-err"].hidden = true;
 nodes["agents-panel"].hidden = true;
@@ -73,7 +73,7 @@ class Option {
 	}
 }
 
-// 假时钟：把 1 秒限流变成瞬时，测试才能确定性地跑完
+// Fake clock makes one-second throttling instantaneous for deterministic tests.
 const realSetTimeout = globalThis.setTimeout;
 let clock = 1_000_000;
 const fakeSetTimeout = (fn) => {
@@ -83,8 +83,8 @@ const fakeSetTimeout = (fn) => {
 };
 
 const PERSONAS = [
-	{ id: "terse", name: "极简", description: "只回答，不解释" },
-	{ id: "neutral", name: "中性助手", description: "最小身份" },
+	{ id: "terse", name: "\u6781\u7b80", description: "\u53ea\u56de\u7b54，\u4e0d\u89e3\u91ca" },
+	{ id: "neutral", name: "\u4e2d\u6027\u52a9\u624b", description: "\u6700\u5c0f\u8eab\u4efd" },
 	{ id: "ctf", name: "ctf", description: "" },
 ];
 const window = { PERSONAS };
@@ -111,7 +111,7 @@ const magpie = {
 };
 
 const tick = () => new Promise((r) => realSetTimeout(r, 0));
-// 按钮的文字在子节点里，取整棵子树的文本
+// Button text lives in descendants; read the entire subtree.
 const textOf = (n) => (n._text ?? "") + (n.children ?? []).map(textOf).join(" ");
 const ok = (cond, msg) => {
 	if (!cond) {
@@ -121,7 +121,7 @@ const ok = (cond, msg) => {
 };
 const btn = (name) => nodes.list.children.find((b) => textOf(b).includes(name));
 
-// page/app.js 是 classic script（不是 module），在沙箱里跑就和浏览器里一样
+// page/app.js is a classic script, not a module; sandbox execution matches the browser.
 runInNewContext(appSrc, {
 	magpie,
 	document,
@@ -133,133 +133,133 @@ runInNewContext(appSrc, {
 });
 await tick();
 
-// 1) 初始渲染：当前设置、状态行可见、模式下拉、人设列表
-ok(nodes["now-persona"].textContent === "极简", "当前人设显示名字而不是 id");
-ok(nodes["now-mode"].textContent === "append", "当前模式已显示");
-ok(nodes.status.hidden === false, "状态行不再被 hidden 藏住（原 bug）");
-ok(nodes.mode.children.length === 5, "模式下拉有 5 项（含跟随）");
-ok(nodes.mode.value === "append", "模式下拉回显已保存的值");
-ok(nodes.list.children.length === 3, "人设列表渲染了 3 个");
-ok(nodes.count.textContent === "All 3", "标题显示总数");
-ok(nodes.status.textContent.includes("only for claude"), "状态行提示 agents 过滤仍然生效");
+// 1) Initial render: current settings, visible status, mode dropdown and persona list
+ok(nodes["now-persona"].textContent === "\u6781\u7b80", "Current persona displays its name, not id");
+ok(nodes["now-mode"].textContent === "append", "Current mode is displayed");
+ok(nodes.status.hidden === false, "Status is no longer hidden (original bug)");
+ok(nodes.mode.children.length === 5, "Mode dropdown has five options including follow");
+ok(nodes.mode.value === "append", "Mode dropdown shows saved value");
+ok(nodes.list.children.length === 3, "Persona list renders three entries");
+ok(nodes.count.textContent === "All 3", "Title shows total");
+ok(nodes.status.textContent.includes("only for claude"), "Status indicates agents filtering remains active");
 
-// 2) 搜索框真的过滤（原 bug：从未绑定）
-nodes.q.value = "极简";
+// 2) Search actually filters (original bug: no binding)
+nodes.q.value = "\u6781\u7b80";
 nodes.q.oninput();
-ok(nodes.list.children.length === 1 && textOf(nodes.list.children[0]).includes("极简"), "搜索「极简」只剩 1 个");
-ok(nodes.count.textContent === "Matched 1 / 3", "标题跟着过滤结果变");
+ok(nodes.list.children.length === 1 && textOf(nodes.list.children[0]).includes("\u6781\u7b80"), "Searching the concise persona returns one entry");
+ok(nodes.count.textContent === "Matched 1 / 3", "Title reflects filtered results");
 nodes.q.value = "zzz";
 nodes.q.oninput();
-ok(nodes.list.children.length === 1 && nodes.list.children[0].className === "empty", "搜不到时给出空状态");
+ok(nodes.list.children.length === 1 && nodes.list.children[0].className === "empty", "Show empty state when no match exists");
 nodes.q.value = "";
 nodes.q.oninput();
 
-// 3) 点人设：options.set 必须带上原有的 agents（原 bug：整对象覆盖，丢用户 CLI 配置）
-btn("中性助手").onclick();
+// 3) Selecting a persona must preserve agents in options.set (original bug overwrote CLI configuration).
+btn("\u4e2d\u6027\u52a9\u624b").onclick();
 await tick();
 const first = calls.at(-1);
-ok(first.persona === "neutral", "点击写入 persona");
-ok(JSON.stringify(first.agents) === '["claude"]', "agents 过滤被保留，没有被覆盖掉（原 bug）");
-ok(first.mode === "append", "没动的 mode 原样带回去");
+ok(first.persona === "neutral", "Click writes persona");
+ok(JSON.stringify(first.agents) === '["claude"]', "Agent filter is retained, not overwritten");
+ok(first.mode === "append", "Unchanged mode is retained");
 
-// 4) 模式下拉：改 mode 不能丢 persona / agents
+// 4) Changing mode must retain persona and agents
 nodes.mode.value = "strict";
 nodes.mode.onchange({ target: nodes.mode });
 await tick();
 const byMode = calls.at(-1);
-ok(byMode.mode === "strict", "改 mode 会写进 options");
-ok(byMode.persona === "neutral" && JSON.stringify(byMode.agents) === '["claude"]', "改 mode 时 persona 和 agents 都在");
+ok(byMode.mode === "strict", "Changing mode updates options");
+ok(byMode.persona === "neutral" && JSON.stringify(byMode.agents) === '["claude"]', "Persona and agents survive mode changes");
 
-// 5) 连点两次：不能丢最后一次（原 bug：1.1s 内直接 return）
+// 5) Two rapid clicks must retain the last one (original bug returned within 1.1s).
 btn("ctf").onclick();
-btn("中性助手").onclick();
+btn("\u4e2d\u6027\u52a9\u624b").onclick();
 await tick();
-ok(store.persona === "neutral", "第二次连点生效（最终状态以最后一次为准）");
+ok(store.persona === "neutral", "Second rapid click wins");
 
-// 6) Save failed要回滚，不能显示假状态
+// 6) Save failure must roll back rather than display false state.
 failNext = true;
 btn("ctf").onclick();
 await tick();
-ok(nodes.status.dataset.state === "error", "失败时状态行标成 error");
-ok(nodes.status.textContent.includes("Save failed"), "失败时显示原因");
-ok(nodes["now-persona"].textContent === "中性助手", "失败后 UI 回滚到已保存的值（原 bug：乐观更新不回滚）");
+ok(nodes.status.dataset.state === "error", "Failure marks status as error");
+ok(nodes.status.textContent.includes("Save failed"), "Failure displays reason");
+ok(nodes["now-persona"].textContent === "\u4e2d\u6027\u52a9\u624b", "Failure rolls UI back to saved values");
 
-// 7) 导入 md：选文件 → 自动填 id/名字 → 存进 options，并直接选中
-const raw = "---\nname: 我的人设\ndescription: 自测\n---\nBe mine.";
+// 7) Import md: select file, fill id/name, save to options and select
+const raw = "---\nname: \u6211\u7684\u4eba\u8bbe\ndescription: \u81ea\u6d4b\n---\nBe mine.";
 nodes.file.files = [{ name: "my persona.md", text: async () => raw }];
 await nodes.file.onchange({ target: nodes.file });
-ok(nodes.body.value === raw, "选文件后正文进了输入框");
-ok(nodes.pname.value === "我的人设", "名字取自 frontmatter");
-ok(nodes.pid.value === "my-persona", "id 从文件名猜出来（空格换连字符）");
+ok(nodes.body.value === raw, "File body enters text field");
+ok(nodes.pname.value === "\u6211\u7684\u4eba\u8bbe", "Name comes from frontmatter");
+ok(nodes.pid.value === "my-persona", "ID inferred from filename, replacing spaces with hyphens");
 
 const beforeImport = calls.length;
 nodes["import-save"].onclick();
 await tick();
 const imported = calls.at(-1);
-ok(calls.length > beforeImport && imported.persona === "my-persona", "导入后直接选中这个人设");
-ok(Array.isArray(imported.inlinePersonas) && imported.inlinePersonas[0]?.text === raw, "正文写进 options.inlinePersonas");
-ok(imported.inlinePersonas[0]?.name === "我的人设", "名字一起存下来，列表才有东西显示");
-ok(nodes.list.children.length === 4 && textOf(nodes.list.children[0]).includes("我的人设"), "导入的人设排在最前面");
-ok(nodes.count.textContent === "All 4", "标题计数包含导入的人设");
-ok(nodes["import-count"].textContent === "Imported 1", "导入计数更新");
-ok(nodes.body.value === "" && nodes.pid.value === "", "存完清空表单");
+ok(calls.length > beforeImport && imported.persona === "my-persona", "Select imported persona immediately");
+ok(Array.isArray(imported.inlinePersonas) && imported.inlinePersonas[0]?.text === raw, "Write body to options.inlinePersonas");
+ok(imported.inlinePersonas[0]?.name === "\u6211\u7684\u4eba\u8bbe", "Save the name for list display");
+ok(nodes.list.children.length === 4 && textOf(nodes.list.children[0]).includes("\u6211\u7684\u4eba\u8bbe"), "Imported persona appears first");
+ok(nodes.count.textContent === "All 4", "Title count includes imported persona");
+ok(nodes["import-count"].textContent === "Imported 1", "Import count updates");
+ok(nodes.body.value === "" && nodes.pid.value === "", "Clear form after saving");
 
-// 重名内置 id、非法 id 都要拦住，而且一次 options.set 都不能发
+// Reject duplicate built-in and invalid IDs without sending options.set.
 const guarded = calls.length;
 nodes.file.files = [{ name: "x.md", text: async () => "hi" }];
 await nodes.file.onchange({ target: nodes.file });
 nodes.pid.value = "terse";
 nodes["import-save"].onclick();
-ok(nodes["import-err"].hidden === false && nodes["import-err"].textContent.includes("conflicts"), "和内置人设重名时拒绝");
+ok(nodes["import-err"].hidden === false && nodes["import-err"].textContent.includes("conflicts"), "Reject a built-in persona name conflict");
 nodes.pid.value = "../bad";
 nodes["import-save"].onclick();
-ok(nodes["import-err"].textContent.includes("ID"), "非法 id 时拒绝并说明规则");
-ok(calls.length === guarded, "被拒绝时一次 options.set 都没发");
+ok(nodes["import-err"].textContent.includes("ID"), "Reject invalid ID and explain rule");
+ok(calls.length === guarded, "No options.set calls for rejected input");
 
-// 删除全部导入：被选中的人设要回到跟随，不能留一个悬空 id
+// Deleting all imports resets the selected persona to follow, avoiding dangling IDs.
 nodes["del-all"].onclick();
 await tick();
 const afterDelete = calls.at(-1);
-ok(Array.isArray(afterDelete.inlinePersonas) && afterDelete.inlinePersonas.length === 0, "删除全部导入");
-ok(afterDelete.persona === "", "被删掉的人设不再选中（回到跟随）");
-ok(nodes["import-count"].textContent === "No imports yet", "计数回到空");
+ok(Array.isArray(afterDelete.inlinePersonas) && afterDelete.inlinePersonas.length === 0, "Delete all imports");
+ok(afterDelete.persona === "", "Deleted persona is no longer selected");
+ok(nodes["import-count"].textContent === "No imports yet", "Count returns to empty");
 
-// 8) 生效 Agent 范围配置（全部 / 仅勾选 / 排除）
-ok(nodes["scope-include"].checked === true, "初始 options.agents 有值时范围自动为仅勾选");
-ok(nodes["agents-panel"].hidden === false, "仅勾选时展示 agent 面板");
-ok(nodes["agents-list"].children.length >= 9, "预置了常见 Agent 列表");
+// 8) Agent scope configuration (all / selected / excluded)
+ok(nodes["scope-include"].checked === true, "Initial nonempty options.agents selects included scope");
+ok(nodes["agents-panel"].hidden === false, "Show agent panel in selected scope");
+ok(nodes["agents-list"].children.length >= 9, "Common agents are preloaded");
 
-// 切换到排除模式
+// Switch to exclusion mode
 nodes["scope-exclude"].onchange();
 await tick();
 const scopeExcludeCall = calls.at(-1);
-ok(Array.isArray(scopeExcludeCall.agents) && scopeExcludeCall.agents.length === 0, "切换排除模式时清空 agents 白名单");
+ok(Array.isArray(scopeExcludeCall.agents) && scopeExcludeCall.agents.length === 0, "Switching to exclusion clears the agents allowlist");
 
-// 在排除模式下勾选 claude
+// Select claude in exclusion mode
 const claudeChip = nodes["agents-list"].children.find((c) => c.dataset?.agent === "claude");
-ok(claudeChip !== undefined, "存在 claude 选项");
+ok(claudeChip !== undefined, "Claude option exists");
 const claudeCb = claudeChip.children.find((k) => k.type === "checkbox");
 claudeCb.checked = true;
 claudeCb.onchange();
 await tick();
 const excludeClaudeCall = calls.at(-1);
-ok(JSON.stringify(excludeClaudeCall.disabledAgents) === '["claude"]', "勾选 claude 写入 disabledAgents");
-ok(nodes.status.textContent.includes("excluding claude"), "状态行提示已排除 claude");
+ok(JSON.stringify(excludeClaudeCall.disabledAgents) === '["claude"]', "Selecting claude writes disabledAgents");
+ok(nodes.status.textContent.includes("excluding claude"), "Status shows claude excluded");
 
-// 添加自定义 agent
+// Add a custom agent
 nodes["custom-agent"].value = "kilo";
 nodes["add-agent-btn"].onclick();
 await tick();
 const addKiloCall = calls.at(-1);
-ok(addKiloCall.disabledAgents.includes("kilo"), "添加自定义 agent kilo 并写入 disabledAgents");
+ok(addKiloCall.disabledAgents.includes("kilo"), "Add custom agent kilo to disabledAgents");
 
-// 切换到全部生效
+// Switch to all agents
 nodes["scope-all"].onchange();
 await tick();
 const scopeAllCall = calls.at(-1);
-ok(scopeAllCall.agents.length === 0 && scopeAllCall.disabledAgents.length === 0, "全部生效时清空过滤列表");
-ok(nodes["agents-panel"].hidden === true, "全部生效时隐藏 agent 面板");
-// 9) 读不到 options 时不开放交互（否则这期间的点击会用空 base 把 agents 写没）
+ok(scopeAllCall.agents.length === 0 && scopeAllCall.disabledAgents.length === 0, "All agents scope clears filters");
+ok(nodes["agents-panel"].hidden === true, "All agents scope hides agent panel");
+// 9) Disable interaction when options cannot be read, preventing clicks from overwriting agents with an empty base.
 const nodes2 = Object.fromEntries(ids.map((id) => [id, new Node()]));
 nodes2.status.hidden = true;
 runInNewContext(appSrc, {
@@ -279,7 +279,7 @@ runInNewContext(appSrc, {
 	Date: { now: () => clock },
 });
 await tick();
-ok(nodes2.status.hidden === false && nodes2.status.dataset.state === "error", "读不到 options 时把错误写在状态行");
-ok(nodes2.list.children.length === 0 && nodes2.mode.onchange === undefined, "读不到 options 时一个人设都不渲染、事件也不绑");
+ok(nodes2.status.hidden === false && nodes2.status.dataset.state === "error", "Display an error when options cannot be read");
+ok(nodes2.list.children.length === 0 && nodes2.mode.onchange === undefined, "Render no personas or handlers when options cannot be read");
 
-console.log(process.exitCode ? "\n有失败项" : `\n全部通过（共 ${calls.length} 次 options.set）`);
+console.log(process.exitCode ? "\nSome checks failed" : `\nAll passed (${calls.length} options.set calls)`);
