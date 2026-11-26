@@ -1202,11 +1202,11 @@ function renderSettings() {
   $('confirm-close').checked = desktop.confirmOnClose !== false;
   const badge = $('desktop-mode-badge');
   const managed = Boolean(state.settingsDesktop?.managed);
-  badge.textContent = managed ? pick('桌面端 · 窗口形态', 'Desktop · Window') : pick('终端托管', 'Terminal Managed');
+  badge.textContent = managed ? 'Desktop · Window' : 'Terminal Managed';
   badge.className = `pill ${managed ? 'is-good' : ''}`;
   $('desktop-mode-badge').title = managed
-    ? pick('双击 exe / 桌面图标启动：关闭窗口的行为由下面这项决定', 'Launched via desktop shortcut / executable: window close behavior is controlled below')
-    : pick('当前是命令行启动的 web 服务，关窗退出不适用（由终端托管）', 'Launched from CLI; window-close exit does not apply (managed by terminal)');
+    ? 'Launched via desktop shortcut / executable: window close behavior is controlled below'
+    : 'Launched from CLI; window-close exit does not apply (managed by terminal)';
 
   $('webdav-url').value = webdav.url || '';
   $('webdav-dir').value = webdav.dir || 'agent-purge';
@@ -1215,7 +1215,7 @@ function renderSettings() {
   $('webdav-password').placeholder = webdav.hasPassword ? t('settings.webdavPasswordKeep') : t('settings.webdavPasswordUnset');
   $('backup-stamp').textContent = webdav.lastBackupAt
     ? pick(`上次备份 ${fmtDateTime(webdav.lastBackupAt)}`, `Last backup ${fmtDateTime(webdav.lastBackupAt)}`)
-    : pick('还没有备份过', 'No backups yet');
+    : 'No backups yet';
 }
 
 function settingsStatus(id, message, kind = '') {
@@ -1278,8 +1278,8 @@ $('save-desktop')?.addEventListener('click', () => operation(async () => {
   });
   state.settings = result.settings;
   renderSettings();
-  settingsStatus('desktop-status', pick('已保存；下一次关窗就按新方式处理。', 'Saved; applies on next window close.'));
-  notify(pick('窗口设置已保存。', 'Window settings saved.'), 'good');
+  settingsStatus('desktop-status', 'Saved; applies on next window close.');
+  notify('Window settings saved.', 'good');
 }));
 
 async function saveWebdav({ test = false } = {}) {
@@ -1308,30 +1308,30 @@ async function runWebdavUi(pendingText, work) {
   }
 }
 
-$('webdav-save')?.addEventListener('click', () => operation(() => runWebdavUi(pick('正在测试连接…', 'Testing connection…'), async () => {
+$('webdav-save')?.addEventListener('click', () => operation(() => runWebdavUi('Testing connection…', async () => {
   await saveWebdav({ test: true });
-  notify(pick('WebDAV 设置已保存，连接正常。', 'WebDAV settings saved; connection OK.'), 'good');
+  notify('WebDAV settings saved; connection OK.', 'good');
 })));
 
-$('webdav-backup')?.addEventListener('click', () => operation(() => runWebdavUi(pick('正在备份…', 'Backing up…'), async () => {
+$('webdav-backup')?.addEventListener('click', () => operation(() => runWebdavUi('Backing up…', async () => {
   await saveWebdav();
   const result = await api('webdav', { action: 'backup' });
   state.settings = (await api('settings')).settings;
   renderSettings();
   settingsStatus('webdav-status', pick(`已备份 ${result.files} 个文件（${fmt(result.bytes)} 字节）→ ${result.remote}`, `Backed up ${result.files} file(s) (${fmt(result.bytes)} bytes) → ${result.remote}`), 'good');
-  notify(pick('备份完成。', 'Backup complete.'), 'good');
+  notify('Backup complete.', 'good');
 })));
 
 $('webdav-restore')?.addEventListener('click', () => operation(async () => {
-  if (!$('webdav-url').value.trim()) throw new Error(pick('先填 WebDAV 地址', 'Enter WebDAV URL first'));
-  if (!confirm(pick('恢复会用远端备份覆盖本机的人设与设置（会先在本地 backups/ 留一份快照）。继续？', 'Restore will overwrite local personas and settings with the remote backup (a local snapshot will be saved in backups/ first). Continue?'))) return;
-  await runWebdavUi(pick('正在恢复…', 'Restoring…'), async () => {
+  if (!$('webdav-url').value.trim()) throw new Error('Enter WebDAV URL first');
+  if (!confirm('Restore will overwrite local personas and settings with the remote backup (a local snapshot will be saved in backups/ first). Continue?')) return;
+  await runWebdavUi('Restoring…', async () => {
     await saveWebdav();
     const result = await api('webdav', { action: 'restore', confirm: true });
     await refresh({ resetDraft: true });
     renderSettings();
     settingsStatus('webdav-status', pick(`已恢复 ${result.written.length} 个文件；本地快照：${result.snapshot || '未创建'}`, `Restored ${result.written.length} file(s); local snapshot: ${result.snapshot || 'none'}`), 'good');
-    notify(pick('已从备份恢复，请检查人设与设置。', 'Restored from backup; please review personas and settings.'), 'good');
+    notify('Restored from backup; please review personas and settings.', 'good');
   });
 }));
 $('project-targets').addEventListener('click', e => {
