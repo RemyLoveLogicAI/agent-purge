@@ -17,7 +17,7 @@ test('compareSemver includes prerelease ordering and ignores build metadata', ()
 test('currentVersion reads the packaged version and Node is never self-replaceable', () => {
   assert.equal(currentVersion(), pkgVersion);
   assert.equal(canReplaceSelf(), false);
-  assert.throws(() => replaceSelfExecutable('not-a-file'), /Node\/脚本安装/);
+  assert.throws(() => replaceSelfExecutable('not-a-file'), /Node\/script installation/);
 });
 test('no published Release is distinct from a verified latest version', async t => {
   t.mock.method(globalThis, 'fetch', async () => ({ status: 404 }));
@@ -32,9 +32,9 @@ test('checkForUpdate times out during both headers and body without external net
     await new Promise(done => signal.addEventListener('abort', done, { once: true }));
     throw new DOMException('fixture timeout', 'AbortError');
   });
-  assert.equal((await checkForUpdate({timeout:10,force:true})).error, '请求超时');
+  assert.equal((await checkForUpdate({timeout:10,force:true})).error, 'Request timed out');
   globalThis.fetch = async () => ({ ok:true, status:200, json:()=>new Promise(()=>{}) });
-  assert.equal((await checkForUpdate({timeout:10,force:true})).error, '请求超时');
+  assert.equal((await checkForUpdate({timeout:10,force:true})).error, 'Request timed out');
 });
 test('release cache recomputes current version and validates release metadata', async t => {
   const dir=mkdtempSync(join(tmpdir(),'ap-update-cache-')), file=join(dir,'cache.json');
@@ -75,8 +75,8 @@ test('executable replacement uses destination-volume staging and preserves the o
   try {
     writeFileSync(current,old);writeFileSync(next,bytes);
     const result=replaceExecutable(current,next);assert.equal(result.ok,true);assert.deepEqual(readFileSync(current),bytes);assert.deepEqual(readFileSync(result.oldExePath),old);
-    for(const name of ['node.exe','bun.exe','node','bun']) assert.throws(()=>replaceExecutable(join(dir,name),next),/共享运行时/);
-    writeFileSync(next,'not exe');assert.throws(()=>replaceExecutable(current,next),/可执行文件/);assert.deepEqual(readFileSync(current),bytes);
+    for(const name of ['node.exe','bun.exe','node','bun']) assert.throws(()=>replaceExecutable(join(dir,name),next),/Shared runtime/);
+    writeFileSync(next,'not exe');assert.throws(()=>replaceExecutable(current,next),/executable/);assert.deepEqual(readFileSync(current),bytes);
     assert.equal(readdirSync(dir).some(name=>name.includes('.new-')),false);assert.equal(existsSync(next),true);
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });
@@ -130,24 +130,24 @@ test('git update refuses a dirty tree, a detached head and a missing upstream', 
     sh(work, 'add', '.'); sh(work, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'v1');
     sh(work, 'push', '-u', 'origin', 'main');
 
-    // 未提交改动：必须拒绝，且不许自作主张 stash/copy
+    // uncommitted changes：必须拒绝，且不许自作主张 stash/copy
     writeFileSync(join(work, 'a.txt'), 'local edit\n');
     assert.equal(gitCheckoutState({ root: work }).dirty, 1);
-    assert.throws(() => gitPullSelf({ root: work }), /未提交改动/);
+    assert.throws(() => gitPullSelf({ root: work }), /uncommitted changes/);
     assert.equal(readFileSync(join(work, 'a.txt'), 'utf8'), 'local edit\n', '本地改动保持原样');
     sh(work, 'checkout', '--', 'a.txt');
 
     // detached HEAD：没有分支名，不能猜
     sh(work, 'checkout', '--detach');
-    assert.throws(() => gitPullSelf({ root: work }), /HEAD|没有上游/);
+    assert.throws(() => gitPullSelf({ root: work }), /HEAD|[Nn]o upstream/);
     sh(work, 'checkout', 'main');
 
-    // 没有上游：明确拒绝，不能默认 origin/main
+    // [Nn]o upstream：明确拒绝，不能默认 origin/main
     sh(base, 'init', '-b', 'main', solo);
     writeFileSync(join(solo, 'a.txt'), 'x\n');
     sh(solo, 'add', '.'); sh(solo, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-m', 'x');
     assert.equal(gitCheckoutState({ root: solo }).upstream, null);
-    assert.throws(() => gitPullSelf({ root: solo }), /没有上游/);
+    assert.throws(() => gitPullSelf({ root: solo }), /[Nn]o upstream/);
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
 test('detectInstallType reports git for a source checkout and never for a compiled build', () => {
@@ -169,6 +169,6 @@ test('a failed pull throws instead of reporting success with stderr as output', 
     sh(work, 'config', 'branch.main.merge', 'refs/heads/main');
     // 让 @{u} 能解析：远程跟踪引用手工造一个，这样才走到真正的 pull 失败
     sh(work, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
-    assert.throws(() => gitPullSelf({ root: work, timeout: 8000 }), /git pull 失败/);
+    assert.throws(() => gitPullSelf({ root: work, timeout: 8000 }), /git pull failed/);
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
