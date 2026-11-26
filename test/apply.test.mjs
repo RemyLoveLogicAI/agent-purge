@@ -57,7 +57,7 @@ test('disableHarness cleans an installed block even when armed state was lost', 
  assert.match(text(file),/USER RULES/);
  assert.ok(loadState(root).state.disabledHarnesses.includes('pi'));
 });
-test('历史能力证据不确认本次应用',()=>{
+test('Historical capability evidence does not confirm this application',()=>{
  store.save('a',{body:'PERSONA A'});store.setActive('a');patchState(root,{default:{harness:'pi',mode:'replace'},armed:{pi:['install']}});
  const verification=join(root,'verification'),report=modes=>JSON.stringify({schema:1,results:[{harness:'pi',status:'captured',modes}]});
  const req=roles=>({roles,chars:100,markerCount:1,identityLines:[],toolDefinitions:3});
@@ -75,15 +75,15 @@ test('dsh: enabling slash cascades to install and initializes purge off; removin
  mkdirSync(headless, { recursive: true });
  writeFileSync(join(headless, 'package.json'), '{}');
  patchState(root, { default: { harness: 'dsh', mode: 'replace' }, armed: {} });
- // 单独开启 slash 通道
+ // Enable the slash channel separately
  const r = changeChannel(root, { harness: 'dsh', channel: 'slash', enabled: true });
  assert.equal(r.ok, true);
  const armed = loadState(root).state.armed?.dsh ?? [];
- assert.ok(armed.includes('install'), 'slash 必须级联安装 install 常驻插件');
- assert.ok(armed.includes('slash'), 'slash 必须被武装');
+ assert.ok(armed.includes('install'), 'slash must cascade-install the persistent install plugin');
+ assert.ok(armed.includes('slash'), 'slash must be armed');
  const runtime = loadState(root).state.dshRuntime ?? {};
- assert.equal(runtime.headless?.enabled, false, '开启热切时默认必须处于 purge off 状态');
- // 卸载 install 时，slash 必须一并级联卸载
+ assert.equal(runtime.headless?.enabled, false, 'When hot switching is enabled, purge must default to off');
+ // Uninstalling install must also cascade-uninstall slash
  const un = changeChannel(root, { harness: 'dsh', channel: 'install', enabled: false });
  assert.equal(un.ok, true);
  const armedAfter = loadState(root).state.armed?.dsh ?? [];
