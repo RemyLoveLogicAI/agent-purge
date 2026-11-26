@@ -13,13 +13,13 @@ const { clean } = await import("../lib/clean.mjs");
 const { dataHome } = await import("../lib/home.mjs");
 test.after(() => rmSync(dir, { recursive: true, force: true }));
 
-test("账本：按所有者去重；损坏时保留证据并停止写入", () => {
+test("Ledger: deduplicate by owner; preserve evidence and stop writes when corrupted", () => {
 	const root = join(dir, "l1");
 	const file = join(dir, "a.txt");
 	writeFileSync(file, "x");
 	record(root, { kind: "file", harness: "codex", channel: "shim", path: file, undo: { type: "file-delete" } });
 	record(root, { kind: "file", harness: "codex", channel: "shim", path: file, undo: { type: "file-delete" } });
-	assert.equal(listLedger(root).length, 1, "重复登记应去重");
+	assert.equal(listLedger(root).length, 1, "Duplicate registrations must be deduplicated");
 	cancel(root, { kind: "file", path: file });
 	assert.equal(listLedger(root).length, 0);
 	writeFileSync(ledgerFile(root), "{not json");
@@ -28,44 +28,44 @@ test("账本：按所有者去重；损坏时保留证据并停止写入", () =>
 	assert.equal(readFileSync(ledgerFile(root), "utf8"), "{not json");
 });
 
-test("账本：path 条目登记目录时不能把目录当文件读", () => {
+test("Ledger: a directory registered as a path must not be read as a file", () => {
 	const root = join(dir, "l-path");
 	const folder = join(dir, "shim-bin");
 	mkdirSync(folder, { recursive: true });
 	const entry = record(root, { kind: "path", harness: "codebuddy", channel: "shim", path: folder, undo: { type: "path-env" } });
 	assert.equal(entry.kind, "path");
-	assert.equal(entry.sha256, undefined, "目录没有文件哈希");
+	assert.equal(entry.sha256, undefined, "Directories have no file hash");
 	assert.equal(listLedger(root).length, 1);
 	cancel(root, { kind: "path", path: folder });
 	assert.equal(listLedger(root).length, 0);
 });
 
-test("clean：按账本删文件、剥托管块，块外内容原样保留", () => {
+test("Clean: remove ledger files and managed blocks, preserving outside content", () => {
 	const root = join(dir, "l2");
 	mkdirSync(root, { recursive: true });
 	const victim = join(dir, "victim.md");
 	const agentFile = join(dir, "AGENTS.md");
 	writeFileSync(victim, "shim");
-	writeFileSync(agentFile, "MINE\n# >>> agent-purge\n注入块\n# <<< agent-purge\n");
+	writeFileSync(agentFile, "MINE\n# >>> agent-purge\ninjected block\n# <<< agent-purge\n");
 	record(root, { kind: "file", harness: "codex", channel: "shim", path: victim, undo: { type: "file-delete" } });
 	record(root, { kind: "block", harness: "pi", channel: "install", path: agentFile, undo: { type: "block-revert" } });
 
 	const r = clean(root);
-	assert.equal(existsSync(victim), false, "file-delete 应删掉写入的文件");
+	assert.equal(existsSync(victim), false, "file-delete must remove the written file");
 	const after = readFileSync(agentFile, "utf8");
-	assert.ok(after.includes("MINE"), "块外内容不能在撤销时丢");
-	assert.ok(!after.includes("注入块"), "托管块应被剥掉");
-	assert.equal(listLedger(root).length, 0, "撤销后账本应清空");
+	assert.ok(after.includes("MINE"), "Content outside the block must survive undo");
+	assert.ok(!after.includes("injected block"), "Managed block must be removed");
+	assert.equal(listLedger(root).length, 0, "Ledger must be empty after undo");
 	assert.deepEqual(r.leftovers, []);
 });
 
-test("clean --dry-run：一条都不写（文件、托管块、账本原样）", () => {
+test("clean --dry-run: write nothing (files, managed blocks and ledger unchanged)", () => {
 	const root = join(dir, "l4");
 	mkdirSync(root, { recursive: true });
 	const victim = join(dir, "dry-victim.md");
 	const agentFile = join(dir, "dry-AGENTS.md");
 	writeFileSync(victim, "shim");
-	writeFileSync(agentFile, "MINE\n# >>> agent-purge\n注入块\n# <<< agent-purge\n");
+	writeFileSync(agentFile, "MINE\n# >>> agent-purge\ninjected block\n# <<< agent-purge\n");
 	record(root, { kind: "file", harness: "codex", channel: "shim", path: victim, undo: { type: "file-delete" } });
 	record(root, { kind: "block", harness: "pi", channel: "install", path: agentFile, undo: { type: "block-revert" } });
 	const snapshot = () => [readFileSync(victim, "utf8"), readFileSync(agentFile, "utf8"), readFileSync(ledgerFile(root), "utf8")];
@@ -73,13 +73,13 @@ test("clean --dry-run：一条都不写（文件、托管块、账本原样）",
 
 	const r = clean(root, { dryRun: true });
 
-	assert.deepEqual(snapshot(), before, "dry-run 动了字节：它必须只读");
-	assert.equal(listLedger(root).length, 2, "dry-run 不许销账，否则下次真 clean 就看不见这些残留");
+	assert.deepEqual(snapshot(), before, "dry-run changed bytes; it must be read-only");
+	assert.equal(listLedger(root).length, 2, "dry-run must not clear the ledger or real clean will miss remnants");
 	assert.equal(r.ok, true);
-	assert.ok(r.steps.some((s) => String(s.detail).includes("dry-run")), "步骤里要明确标出这是演练");
+	assert.ok(r.steps.some((s) => String(s.detail).includes("dry-run")), "Steps must explicitly identify the dry run");
 });
 
-test("self-uninstall：连数据目录一起删；数据目录就是 cwd 时拒绝清空", () => {
+test("self-uninstall: remove the data directory; refuse when it is cwd", () => {
 	const root = join(dir, "l3");
 	mkdirSync(root, { recursive: true });
 	writeFileSync(join(root, "state.json"), "{}");
@@ -88,17 +88,17 @@ test("self-uninstall：连数据目录一起删；数据目录就是 cwd 时拒�
 	try {
 		assert.equal(dataHome(), root);
 		clean(root, { all: true });
-		assert.equal(existsSync(root), false, "all=true 应删掉整个数据目录");
+		assert.equal(existsSync(root), false, "all=true must remove the entire data directory");
 
-		// 数据目录 == cwd 时必须拒绝：那是在删用户自己的目录
+		// Refuse when data directory equals cwd: that would delete the user’s own directory.
 		mkdirSync(root, { recursive: true });
 		writeFileSync(join(root, "state.json"), "{}");
 		const realCwd = process.cwd;
 		process.cwd = () => root;
 		try {
 			const r = clean(root, { all: true });
-			assert.equal(existsSync(join(root, "state.json")), true, "cwd 保护必须拦住删除");
-			assert.equal(r.ok, false, "拒绝删除要报成未完成，不能静默成功");
+			assert.equal(existsSync(join(root, "state.json")), true, "cwd protection must prevent deletion");
+			assert.equal(r.ok, false, "Refusal must be reported as incomplete, not silent success");
 		} finally {
 			process.cwd = realCwd;
 		}
