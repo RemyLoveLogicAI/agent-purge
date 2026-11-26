@@ -38,13 +38,13 @@ test('fresh install: static assets, CSP, no path traversal, power-off without de
   const initial = await api('state');
   assert.equal(initial.defaultsSet, false);
   const initialConfig = configurationOf(initial);
-  assert.equal(needsApply(initial, initialConfig, initialConfig), true, 'issue #6: 首次保留默认模式也能直接保存');
+  assert.equal(needsApply(initial, initialConfig, initialConfig), true, 'issue #6: initial defaults can be saved without changing mode');
   const saved = await api('apply', { ...initialConfig, harness: initial.defaults.harness });
   assert.equal(saved.ok, true);
   assert.equal((await api('state')).defaultsSet, true);
   await api('defaults', { harness: null });
   const markup = await html.text();
-  assert.match(markup, /<meta name="ap-server-gen" content="\d+">/, 'HTML 要带上本代编号，供页面卸载时对账');
+  assert.match(markup, /<meta name="ap-server-gen" content="\d+">/, 'HTML includes the generation number for page unload checks');
   const idPattern = markup.match(/id="edit-id"[^>]*pattern="([^"]+)"/)[1];
   // HTML pattern uses Unicode sets (/v); an unescaped hyphen disables browser validation.
   const idRegex = new RegExp(`^(?:${idPattern})$`, 'v');
@@ -52,7 +52,7 @@ test('fresh install: static assets, CSP, no path traversal, power-off without de
   for (const invalid of ['../a', 'a b', '-a', 'a'.repeat(65)]) assert.equal(idRegex.test(invalid), false);
   for (const name of ['app.js','model.mjs','evidence.mjs','styles.css']) assert.equal((await fetch(`${url}/${name}`)).status, 200);
   assert.equal((await fetch(`${url}/package.json`)).status, 404);
-  // 单例探针：只报身份，不跑 detect（issue #14 里重复启动靠它判断“是不是我们自己”）
+  // Singleton probe reports identity without detect (issue #14 uses it to recognize an existing instance).
   const instance = await api('instance');
   assert.equal(instance.app, 'agent-purge');
   assert.equal(instance.pid, child.pid);
@@ -85,7 +85,7 @@ test('verification: missing and malformed reports and same-origin guard', async 
   const denied = await fetch(`${url}/api/power`, { method: 'POST', headers: { origin: 'https://foreign.invalid', 'content-type': 'application/json' }, body: '{"on":true}' });
   assert.equal(denied.status, 403);
 });
-test('settings API: 桌面端偏好 + WebDAV 账号，密码只报 hasPassword', async () => {
+test('settings API: desktop preferences and WebDAV account expose only hasPassword', async () => {
   const initial = await api('settings');
   assert.equal(initial.settings.desktop.exitOnClose, true);
   assert.equal(initial.settings.desktop.confirmOnClose, true);
@@ -119,15 +119,15 @@ test('settings API: 桌面端偏好 + WebDAV 账号，密码只报 hasPassword',
   });
   assert.equal(saved.settings.desktop.exitOnClose, false);
   assert.equal(saved.settings.webdav.hasPassword, true);
-  assert.equal(JSON.stringify(saved).includes('s3cret'), false, '密码不能出现在设置响应里');
+  assert.equal(JSON.stringify(saved).includes('s3cret'), false, 'Password must not appear in settings response');
 
   const state = await api('state');
   assert.equal(state.settings.webdav.hasPassword, true);
   assert.equal(state.settings.webdav.dir, 'backup');
-  assert.equal(JSON.stringify(state).includes('s3cret'), false, '密码不能出现在状态响应里');
+  assert.equal(JSON.stringify(state).includes('s3cret'), false, 'Password must not appear in state response');
   assert.equal(typeof state.desktop.autoExit, 'boolean');
 
-  // 备份动作：没有远端配置时明确报错，而不是静默成功
+  // Backup reports missing remote configuration rather than silently succeeding.
   await api('settings', { webdav: { url: '', password: '' } });
   const noUrl = await fetch(`${url}/api/webdav`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"backup"}' });
   assert.equal(noUrl.status, 400);
@@ -135,7 +135,7 @@ test('settings API: 桌面端偏好 + WebDAV 账号，密码只报 hasPassword',
   assert.equal(badAction.status, 400);
   const restoreNeedsConfirm = await fetch(`${url}/api/webdav`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"restore"}' });
   assert.equal(restoreNeedsConfirm.status, 400);
-  // 恢复一圈：/api/webdav restore 之后 /api/state 绝不能因 store 为空炸成 500，active.md 也要同步
+  // After WebDAV restore, /api/state must not return 500 because the store is empty; synchronize active.md.
   const { createServer } = await import('node:http');
   const davFiles = new Map();
   const davCols = new Set(['/dav/']);
@@ -160,7 +160,7 @@ test('settings API: 桌面端偏好 + WebDAV 账号，密码只报 hasPassword',
     const restored = await api('webdav', { action: 'restore', confirm: true });
     assert.equal(restored.ok, true);
     const afterRes = await fetch(`${url}/api/state`);
-    assert.equal(afterRes.status, 200, 'restore 后紧接着拉 /api/state 必须 200');
+    assert.equal(afterRes.status, 200, '/api/state must return 200 immediately after restore');
     const afterState = await afterRes.json();
     assert.equal(afterState.active, 'cloud');
     assert.equal(readFileSync(join(data, 'personas', 'active.md'), 'utf8').trim(), 'FROM_CLOUD');
@@ -321,7 +321,7 @@ test('issue #1: metadata roundtrip and referenced non-active persona update', as
   await api('harness', { harness: 'pi', persona: 'follow', mode: 'follow' });
 });
 
-test('POST /api/persona/import 端点导入本地目录并支持保存/校验镜像地址', async () => {
+test('POST /api/persona/import imports a local directory and saves/validates a mirror URL', async () => {
   const html = await (await fetch(url)).text();
   assert.match(html, /id="import-mirror"/);
 
@@ -348,19 +348,19 @@ test('POST /api/persona/import 端点导入本地目录并支持保存/校验镜
   assert.equal(cleared.settings.githubMirror, '');
 });
 
-test('POST /api/heartbeat 心跳上报与状态返回', async () => {
+test('POST /api/heartbeat heartbeat reporting and returned status', async () => {
   const res = await api('heartbeat', {});
   assert.equal(res.ok, true);
   assert.equal(typeof res.now, 'number');
   assert.equal(typeof res.autoExit, 'boolean');
 });
 
-test('POST /api/exit 触发优雅退出', async () => {
-  // 单独启动一个临时 Web 服务用于验证退出端点
+test('POST /api/exit triggers graceful exit', async () => {
+  // Launch a separate temporary Web service to test the exit endpoint.
   const exitChild = spawn(process.execPath, [resolve('web/server.mjs'), '--serve', '0'], { cwd: sandbox, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let exitUrl;
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('exitChild 启动超时')), 10000);
+    const timer = setTimeout(() => reject(new Error('exitChild startup timed out')), 10000);
     exitChild.once('exit', code => { clearTimeout(timer); reject(new Error(`exitChild exited ${code}`)); });
     exitChild.stdout.on('data', b => {
       const match = String(b).match(/http:\/\/127\.0\.0\.1:\d+/);
@@ -380,17 +380,17 @@ test('POST /api/exit 触发优雅退出', async () => {
   assert.equal(exitCode, 0);
 });
 
-test('POST /api/leave 源码态只当作"页面走了"：刷新不会把服务带走', async () => {
-  // 前端 pagehide 会发 /api/leave；以前发的 /api/exit 会让"刷新两次"直接把服务刷死。
+test('POST /api/leave source mode treats this as page departure; reload does not stop the service', async () => {
+  // Frontend pagehide sends /api/leave; the former /api/exit caused repeated reloads to stop the service.
   const gen = (await (await fetch(url)).text()).match(/name="ap-server-gen" content="(\d+)"/)[1];
   const res = await api(`leave?gen=${gen}`, {});
   assert.equal(res.ok, true);
-  assert.equal(res.exit, false, '没有 --auto-exit（终端托管）时不该自杀');
+  assert.equal(res.exit, false, 'Without --auto-exit (terminal managed), the service must not exit');
   await new Promise(r => setTimeout(r, 300));
-  assert.ok((await api('state')).harnesses.length > 0, '服务仍在响应');
+  assert.ok((await api('state')).harnesses.length > 0, 'Service still responds');
 });
 
-test('autoExit: 刷新撤销下线倒计时，旧页面迟到的 beacon 不算数', async () => {
+test('autoExit: reload cancels the shutdown countdown and ignores late beacons from old pages', async () => {
   const { serveWeb } = await import('../web/server.mjs');
   let resolveExit;
   const exited = new Promise(r => { resolveExit = r; });
@@ -406,21 +406,21 @@ test('autoExit: 刷新撤销下线倒计时，旧页面迟到的 beacon 不算�
   const leave = async (gen) => (await fetch(`${base}/api/leave?gen=${gen}`, { method: 'POST' })).json();
 
   const first = await genOf();
-  assert.equal((await leave(first)).exit, true, '页面卸载 → 起下线倒计时');
+  assert.equal((await leave(first)).exit, true, 'Page unload starts shutdown countdown');
   const second = await genOf();
-  assert.equal((await leave(first)).exit, false, '上一代页面的 beacon 迟到，必须忽略');
+  assert.equal((await leave(first)).exit, false, 'Ignore late beacons from the previous page generation');
   await new Promise(r => setTimeout(r, 2000));
-  assert.equal(server.listening, true, '刷新后的新页面已撤销倒计时');
+  assert.equal(server.listening, true, 'The reloaded page cancels the countdown');
 
   assert.equal((await leave(second)).exit, true);
   const code = await Promise.race([
     exited,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('页面真的关掉后未退出')), 5000))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Service did not exit after the page actually closed')), 5000))
   ]);
   assert.equal(code, 0);
 });
 
-test('autoExit: 窗口关闭无心跳后自动超时退出', async () => {
+test('autoExit: exit automatically after window closure and heartbeat timeout', async () => {
   const { serveWeb } = await import('../web/server.mjs');
   let exitedCode = null;
   const exited = new Promise(resolve => {
@@ -432,21 +432,21 @@ test('autoExit: 窗口关闭无心跳后自动超时退出', async () => {
     });
     server.once('listening', async () => {
       const p = server.address().port;
-      // 模拟前端初次接入并上报心跳
+      // Simulate initial frontend connection and heartbeat.
       await fetch(`http://127.0.0.1:${p}/api/heartbeat`, { method: 'POST' });
-      // 随后前端窗口关闭，不再发送心跳，等待 200ms 后超时自动退出
+      // Then close the frontend window, stop heartbeats and wait 200ms for automatic exit.
     });
   });
 
   const code = await Promise.race([
     exited,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('autoExit 超时未触发退出')), 5000))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('autoExit timed out without exiting')), 5000))
   ]);
   assert.equal(code, 0);
   assert.equal(exitedCode, 0);
 });
 
-test('autoExit: 桌面窗口还活着就不因心跳缺失退出（issue #14，避免留下连不上的旧页面）', async () => {
+test('autoExit: keep service alive while the desktop window is alive despite missing heartbeats (issue #14)', async () => {
   const { serveWeb } = await import('../web/server.mjs');
   let exited = false;
   const server = serveWeb(0, {
@@ -459,9 +459,9 @@ test('autoExit: 桌面窗口还活着就不因心跳缺失退出（issue #14，�
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   await fetch(`${base}/api/heartbeat`, { method: 'POST' });
-  // 窗口还在但页面卡住不发心跳：timer 每 2s 检查一次，跨过两轮仍不该退
+  // With a live window but stalled heartbeat, two timer checks at 2s intervals must not exit.
   await new Promise(resolve => setTimeout(resolve, 2600));
-  assert.equal(exited, false, '窗口进程还活着，服务必须留着');
+  assert.equal(exited, false, 'The service must remain while the window process is alive');
   assert.equal(server.listening, true);
   await new Promise(resolve => server.close(resolve));
 });
@@ -480,7 +480,7 @@ test('serveWeb: custom onError intercepts EADDRINUSE without immediate exit (iss
   await new Promise(resolve => setTimeout(resolve, 200));
   assert.equal(capturedError?.code, 'EADDRINUSE');
 
-  // 探活已有服务状态
+  // Check the existing service status.
   const stateRes = await fetch(`http://127.0.0.1:${occupiedPort}/api/state`);
   assert.equal(stateRes.ok, true);
   const state = await stateRes.json();
