@@ -1,5 +1,5 @@
-// 每家的 build() 是纯函数：只描述"怎么启动"，不 spawn、不写盘。
-// setup/cleanup 由入口统一调用，保证能按哈希回滚。
+// Each host build() is pure: it describes how to launch without spawning or writing to disk.
+// The entry point invokes setup/cleanup to ensure hash-checked rollback.
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { SESSION as DSH_SESSION, addPlugin, sessionSource } from "../lib/dsh.mjs";
@@ -21,13 +21,13 @@ function temporaryPlugin(harness, file, root, args) {
 }
 
 const inline = (text) => text.replace(/\s+$/, "");
-// codex 的 -c 值按 TOML 解析：整段人设必须包成 basic string，否则空格/引号/换行会解析失败。
+// Codex parses -c values as TOML: wrap the persona in a basic string so spaces, quotes and newlines parse correctly.
 const tomlStr = (value) => JSON.stringify(String(value));
 
 export const backends = {
-	// pi：命令行已试过 --system-prompt，但 pi.cmd 走 cmd.exe，10K 人设会撞 8191 上限（实测“命令行太长”）。
-	// 所以 pi 的注入靠扩展（sys 层、无长度限制、跟 state.json 走），这里只透传。
-	// 扩展由 launch() 在启动前自动确保安装。
+	// pi: --system-prompt was tested, but pi.cmd uses cmd.exe and a 10K persona exceeds its 8191-character limit.
+	// Therefore pi injects through an extension (sys layer, no length limit, following state.json); this passes arguments through.
+	// launch() ensures the extension is installed before starting.
 	pi: ({ args }) => ({ cmd: "pi", args }),
 
 	codex: ({ personaPath, personaText, mode, args }) => ({
@@ -40,7 +40,7 @@ export const backends = {
 					: ["-c", `model_instructions_file=${tomlStr(personaPath.replace(/\\/g, "/"))}`, ...args],
 	}),
 
-// CodeBuddy（腾讯云，npm @tencent-ai/codebuddy-code）：原生整段替换，无残留
+// CodeBuddy (Tencent Cloud, npm @tencent-ai/codebuddy-code): native full replacement, no residue.
 	codebuddy: ({ personaPath, personaText, mode, args }) => ({
 		cmd: "codebuddy",
 		args:
@@ -48,7 +48,7 @@ export const backends = {
 				? [...args]
 				: mode === "append"
 					? ["--append-system-prompt", inline(personaText), ...args]
-					// replace 走文件：内联 9.6K 会把裸命令（.cmd 包装器）撞上 8191 上限
+					// Replace uses a file: inline 9.6K text exceeds the 8191 limit for a bare command with a .cmd wrapper.
 					: ["--system-prompt-file", personaPath, ...args],
 	}),
 
@@ -82,7 +82,7 @@ export const backends = {
 					residueHint: "MCP tool routes are still appended (roughly 10K); disabling the MCP server can reduce this",
 				},
 
-	// 临时插件与常驻插件不共享许可；人设正文不编译进孤儿文件。
+	// Temporary and persistent plugins do not share authorization; persona text is not compiled into orphan files.
 	opencode: ({ mode, cwd, args, root = dataHome() }) => {
 		if (mode === "off") return { cmd: "opencode", args: [...args] };
 		return temporaryPlugin("opencode", join(cwd, ".opencode", "plugin", "agent-purge.ts"), root, args);
@@ -99,8 +99,8 @@ export const backends = {
 		return { ...temporaryPlugin("opencode2", join(opencodePlugins(), "agent-purge-v2-session.ts"), root, args), privateServer: true };
 	},
 
-	// Kilo Code：code.md 覆盖默认 code agent 的 prompt；AGENTS.md 是 append 通道。
-	// 一次性运行用临时安装，退出时按 stash 还原；交互式启动可先 agent-purge install kilo。
+	// Kilo Code：code.md overrides the default code agent prompt; AGENTS.md is the append channel.
+	// One-shot runs use a temporary install restored from stash on exit; for interactive use, first run agent-purge install kilo.
 	kilo: ({ personaText, mode, args, root = dataHome() }) => {
 		if (mode === "off") return { cmd: "kilo", args: ["run", ...args] };
 		let installed = false;
@@ -112,8 +112,8 @@ export const backends = {
 		};
 	},
 
-	// 需要落盘或调用方配合，CLI 不代劳，只给可复制的配方
-	// Qwen Code：官方 --system-prompt / --append-system-prompt；长正文受命令行长度限制。
+	// When disk writes or caller cooperation are required, the CLI supplies a copyable recipe rather than doing it automatically.
+	// Qwen Code：Official --system-prompt / --append-system-prompt; long text is subject to command-line length limits.
 	qwen: ({ personaText, mode, args }) => ({
 		cmd: "qwen",
 		args:
@@ -124,25 +124,25 @@ export const backends = {
 	}),
 
 
-	// Crush：人设走全局 CRUSH.md 的托管块（install 通道），命令行只负责启动。
+	// Crush：Persona uses a managed block in global CRUSH.md (install channel); the CLI only starts the host.
 	crush: ({ args = [] }) => ({ cmd: "crush", args: [...args] }),
 
 
-	// Continue CLI：--rule 接受文件路径，作为规则/上下文追加；不是 core sys 替换。
+	// Continue CLI：--rule accepts a file path and appends rules/context; it does not replace core system text.
 	continue: ({ personaPath, mode, args = [] }) => ({
 		cmd: "cn",
 		args: mode === "off" ? [...args] : ["--rule", personaPath, ...args],
 		residueHint: mode === "off" ? "" : "Persona is passed as a rule and affects only this launch",
 	}),
 
-	// Qoder CLI：官方两个参数，整段 system prompt 或末尾追加。
+	// Qoder CLI：Two official arguments replace the full system prompt or append to it.
 	qoder: ({ personaText, mode, args = [] }) => ({
 		cmd: "qodercli",
 		args: mode === "off" ? [...args] : [mode === "append" ? "--append-system-prompt" : "--system-prompt", inline(personaText), ...args],
 		residueHint: mode === "off" ? "" : "Persona is passed on the command line and affects only this launch",
 	}),
 
-	// Kimi Code：agent file 的 Markdown 正文就是该 agent 的 system prompt。
+	// Kimi Code：The agent file Markdown body is that agent’s system prompt.
 	kimi: ({ personaText, mode, args = [] }) => {
 		if (mode === "off") return { cmd: "kimi", args: [...args] };
 		let undo = null;
@@ -156,9 +156,9 @@ export const backends = {
 		};
 	},
 
-	// Auggie CLI：--rules 只是把内容追加进 rules[]（实测 identity 仍在）；
-	// 真正整份覆盖走隐藏的 --override-system-prompt（实测把 system_prompt 换成只剩人设）。
-	// replace/strict 用后者，append 用 --rules —— 这才和「这个人设到底有没有顶掉宿主」一致。
+	// Auggie CLI：--rules only appends content to rules[] (identity remained in testing);
+	// full replacement uses the hidden --override-system-prompt (tested to replace system_prompt with only the persona).
+	// Replace/strict use the latter, append uses --rules, matching whether the host identity is actually replaced.
 	auggie: ({ personaPath, mode, args = [] }) => {
 		if (mode === "off") return { cmd: "auggie", args: [...args] };
 		const whole = mode === "replace" || mode === "strict";
@@ -171,14 +171,14 @@ export const backends = {
 		};
 	},
 
-	// Goose：--system 追加系统指令，不是整份替换。
+	// Goose：--system appends system instructions rather than replacing the whole prompt.
 	goose: ({ personaText, mode, args = [] }) => ({
 		cmd: "goose",
 		args: mode === "off" ? ["session", ...args] : ["session", "--system", inline(personaText), ...args],
 		residueHint: mode === "off" ? "" : "Persona is passed on the command line and affects only this launch",
 	}),
 
-	// Kiro CLI：custom agent 的 prompt 是主会话 system prompt；启动前写临时 agent，退出还原。
+	// Kiro CLI：The custom agent prompt is the main session system prompt; write a temporary agent before launch and restore it on exit.
 	kiro: ({ personaText, mode, args = [] }) => {
 		if (mode === "off") return { cmd: "kiro-cli", args: ["chat", ...args] };
 		let undo = null;
@@ -200,9 +200,9 @@ export const backends = {
 		],
 	}),
 
-	// 交互式：SOUL.md 是唯一身份入口。启动前写入、退出还原（在 UI 里接管着就一直留着）。
-	// 注意它只在会话首次/重建时读 SOUL.md：续会话从 session DB 还原 system 提示词，改文件不当场生效
-	// （源码 agent/conversation_loop.py::_restore_or_build_system_prompt）。
+	// Interactive: SOUL.md is the sole identity entry point. Write before launch and restore on exit (keep it while managed in UI).
+	// SOUL.md is read only when a session is first created or rebuilt; resumed sessions restore the system prompt from the session DB, so edits are not immediate.
+	// (Source: agent/conversation_loop.py::_restore_or_build_system_prompt.)
 	hermes: ({ personaText, personaPath, mode, args = [] }) => {
 		let undo = null;
 		return {
@@ -221,9 +221,9 @@ export const backends = {
 		};
 	},
 
-	// Antigravity：人设只能靠 ~/.gemini/config/AGENTS.md（App 与 CLI 共用、App 自己拼进
-	// systemInstruction 的 <user_rules>）。CLI 没有 --system-prompt 之类的启动参数，
-	// 所以这里按「装着跑」处理：启动前写入托管块，退出按 stash 还原。
+	// Antigravity：Persona must use ~/.gemini/config/AGENTS.md (shared by app and CLI; the app inserts it into
+	// the <user_rules> section of systemInstruction). CLI lacks a --system-prompt launch option,
+	// so install temporarily: write the managed block before launch and restore from stash on exit.
 	antigravity: ({ personaText, mode, args = [] }) => {
 		if (mode === "off") return { cmd: antigravityBin(), args };
 		let undo = null;
@@ -240,8 +240,8 @@ export const backends = {
 
 
 
-// 一次性问答（headless）规格：Web UI 与 `agent-purge <h> --ask` 共用。
-// 只收录实测过参数的 harness，没验过的不猜。
+// One-shot headless specifications shared by Web UI and `agent-purge <h> --ask`.
+// Include only harnesses with tested arguments; do not guess for unverified hosts.
 export const oneshots = {
 	pi: ({ prompt }) => ({
 		cmd: "pi",
@@ -282,7 +282,7 @@ export const oneshots = {
 	},
 	dsh: ({ prompt, personaText, mode, root }) => {
 		if (mode === "off") return { cmd: "dsh", args: ["--profile", "headless", prompt] };
-		// backends.dsh 会自己补 --profile headless，这里只给 prompt（否则重复）
+		// backends.dsh adds --profile headless itself; pass only the prompt here to avoid duplication.
 		return backends.dsh({ personaText, mode, root, args: [prompt] });
 	},
 	qwen: ({ prompt, personaText, mode }) => ({
@@ -309,7 +309,7 @@ export const oneshots = {
 			cleanup: () => { if (undo) { undo(); undo = null; } },
 		};
 	},
-	// 一次性问答也要区分：--rules 只追加，replace/strict 必须用 --override-system-prompt
+	// One-shot requests also distinguish --rules append from replace/strict using --override-system-prompt.
 	auggie: ({ prompt, personaPath, mode }) => ({
 		cmd: "auggie",
 		args: [
@@ -352,7 +352,7 @@ export const oneshots = {
 		};
 	},
 	antigravity: ({ prompt, personaText, mode }) => {
-		// agy 没有 --system-prompt 之类的启动参数：人设只能落 AGENTS.md，跑完按原字节还原
+		// agy lacks --system-prompt options: write the persona to AGENTS.md and restore original bytes after running.
 		if (mode === "off") return { cmd: antigravityBin(), args: ["-p", prompt] };
 		let undo = null;
 		return {
