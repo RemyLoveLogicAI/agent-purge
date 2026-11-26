@@ -60,7 +60,7 @@ export const backends = {
 				: mode === "append"
 					? ["--append-system-prompt-file", personaPath, ...args]
 					: ["--system-prompt-file", personaPath, ...args],
-		residueHint: mode === "off" ? "" : "不补丁时残留 62 字身份句",
+		residueHint: mode === "off" ? "" : "A 62-character identity sentence remains without patching",
 	}),
 
 	grok: ({ personaText, mode, args }) => ({
@@ -79,7 +79,7 @@ export const backends = {
 			: {
 					cmd: "omp",
 					args: [mode === "append" ? "--append-system-prompt" : "--system-prompt", inline(personaText), ...args],
-					residueHint: "MCP tool routes 仍会追加（10K 量级），关掉 MCP server 可缩",
+					residueHint: "MCP tool routes are still appended (roughly 10K); disabling the MCP server can reduce this",
 				},
 
 	// 临时插件与常驻插件不共享许可；人设正文不编译进孤儿文件。
@@ -120,7 +120,7 @@ export const backends = {
 			mode === "off"
 				? [...args]
 				: [mode === "append" ? "--append-system-prompt" : "--system-prompt", inline(personaText), ...args],
-		residueHint: mode === "off" ? "" : "人设走命令行参数；超长正文可能撞 Windows 命令行上限",
+		residueHint: mode === "off" ? "" : "Persona is passed on the command line; very long text may exceed the Windows command-line limit",
 	}),
 
 
@@ -132,14 +132,14 @@ export const backends = {
 	continue: ({ personaPath, mode, args = [] }) => ({
 		cmd: "cn",
 		args: mode === "off" ? [...args] : ["--rule", personaPath, ...args],
-		residueHint: mode === "off" ? "" : "人设作为规则传入，只影响本次启动",
+		residueHint: mode === "off" ? "" : "Persona is passed as a rule and affects only this launch",
 	}),
 
 	// Qoder CLI：官方两个参数，整段 system prompt 或末尾追加。
 	qoder: ({ personaText, mode, args = [] }) => ({
 		cmd: "qodercli",
 		args: mode === "off" ? [...args] : [mode === "append" ? "--append-system-prompt" : "--system-prompt", inline(personaText), ...args],
-		residueHint: mode === "off" ? "" : "人设走命令行参数，只影响本次启动",
+		residueHint: mode === "off" ? "" : "Persona is passed on the command line and affects only this launch",
 	}),
 
 	// Kimi Code：agent file 的 Markdown 正文就是该 agent 的 system prompt。
@@ -150,7 +150,7 @@ export const backends = {
 			cmd: "kimi",
 			args: ["--agent-file", kimiAgentFile(), ...args],
 			runtime: true,
-			note: "临时写 ~/.kimi-code/agents/agent-purge.md；退出按原字节还原",
+			note: "Temporarily writes ~/.kimi-code/agents/agent-purge.md; restores original bytes on exit",
 			setup: () => { if (!undo) undo = temporaryKimiAgent({ personaText }); },
 			cleanup: () => { if (undo) { undo(); undo = null; } },
 		};
@@ -166,8 +166,8 @@ export const backends = {
 			cmd: "auggie",
 			args: [whole ? "--override-system-prompt" : "--rules", personaPath, ...args],
 			residueHint: whole
-				? "人设整份替换 system prompt；只影响本次启动"
-				: "人设作为 rules[] 追加，宿主身份仍在（要用 replace 才顶得掉）",
+				? "Persona replaces the entire system prompt; affects only this launch"
+				: "Persona is appended as rules[]; host identity remains (use replace to remove it)",
 		};
 	},
 
@@ -175,7 +175,7 @@ export const backends = {
 	goose: ({ personaText, mode, args = [] }) => ({
 		cmd: "goose",
 		args: mode === "off" ? ["session", ...args] : ["session", "--system", inline(personaText), ...args],
-		residueHint: mode === "off" ? "" : "人设走命令行参数，只影响本次启动",
+		residueHint: mode === "off" ? "" : "Persona is passed on the command line and affects only this launch",
 	}),
 
 	// Kiro CLI：custom agent 的 prompt 是主会话 system prompt；启动前写临时 agent，退出还原。
@@ -186,7 +186,7 @@ export const backends = {
 			cmd: "kiro-cli",
 			args: ["chat", "--agent", KIRO_AGENT, ...args],
 			runtime: true,
-			note: "临时写 ~/.kiro/agents/agent-purge.json；退出按原字节还原",
+			note: "Temporarily writes ~/.kiro/agents/agent-purge.json; restores original bytes on exit",
 			setup: () => { if (!undo) undo = temporaryKiroAgent({ personaText }); },
 			cleanup: () => { if (undo) { undo(); undo = null; } },
 		};
@@ -194,9 +194,9 @@ export const backends = {
 
 	zcode: () => ({
 		manual: [
-			"CLI 拿不到 customSystemPrompt（只有 app-server/SDK 能传）；CLI 只有 UserPromptSubmit hook 注入，且落在 user 角色。",
-			"注入配方: ~/.zcode/cli/config.json 里 hooks.enabled=true + UserPromptSubmit hook 返回 additionalContext。",
-			"归零配方: 等长替换 resources/glm/zcode.cjs 里的 IJs（42 字），但 cli_prefix 段仍留 42 字。",
+			"CLI cannot receive customSystemPrompt (only app-server/SDK can pass it); CLI injection uses the UserPromptSubmit hook in the user role.",
+			"Injection recipe: set hooks.enabled=true in ~/.zcode/cli/config.json and return additionalContext from a UserPromptSubmit hook.",
+			"Zeroing recipe: replace IJs in resources/glm/zcode.cjs with an equal-length value (42 characters), but 42 characters remain in cli_prefix.",
 		],
 	}),
 
@@ -208,7 +208,7 @@ export const backends = {
 		return {
 			cmd: "hermes",
 			args: [...(mode === "off" ? [] : ["--ignore-rules"]), ...args],
-			note: "SOUL.md 仅供新会话读取；退出后恢复启动前的原字节，不更改常驻选择",
+			note: "SOUL.md is read only by new sessions; original bytes are restored on exit without changing the persistent selection",
 			setup: () => {
 				if (mode === "off" || undo) return;
 				const file = targets.hermes.file();
@@ -230,7 +230,7 @@ export const backends = {
 		return {
 			cmd: antigravityBin(),
 			args,
-			note: "人设写进 ~/.gemini/config/AGENTS.md；退出按原字节还原（已常驻的块不会被动）",
+			note: "Persona is written to ~/.gemini/config/AGENTS.md; original bytes are restored on exit (persistent blocks are untouched)",
 			setup: () => { if (!undo) undo = temporaryAntigravity({ personaText, mode }); },
 			cleanup: () => { if (undo) { undo(); undo = null; } },
 		};
@@ -246,7 +246,7 @@ export const oneshots = {
 	pi: ({ prompt }) => ({
 		cmd: "pi",
 		args: ["-p", prompt],
-		note: "注入靠扩展（sys 层）；人设走 state.json，不占命令行",
+		note: "Injection uses an extension (sys layer); persona comes from state.json, not the command line",
 	}),
 	claude: ({ prompt, personaPath, mode }) => ({
 		cmd: "claude",
@@ -339,7 +339,7 @@ export const oneshots = {
 	zcode: ({ prompt }) => ({
 		cmd: "zcode",
 		args: ["--prompt", prompt, "--mode", "yolo", "--output-format", "stream-json", "--no-color"],
-		note: "persona 对 zcode CLI 不生效：customSystemPrompt 只有 app-server/SDK 能传",
+		note: "Persona has no effect on zcode CLI: customSystemPrompt can only be passed via app-server/SDK",
 	}),
 	kilo: ({ prompt, personaText, mode, root }) => {
 		if (mode === "off") return { cmd: "kilo", args: ["run", prompt, "--format", "json"] };
@@ -358,7 +358,7 @@ export const oneshots = {
 		return {
 			cmd: antigravityBin(),
 			args: ["-p", prompt],
-			note: "人设写进 ~/.gemini/config/AGENTS.md；退出按原字节还原",
+			note: "Persona is written to ~/.gemini/config/AGENTS.md; original bytes are restored on exit",
 			setup: () => { if (!undo) undo = temporaryAntigravity({ personaText, mode }); },
 			cleanup: () => { if (undo) { undo(); undo = null; } },
 		};
