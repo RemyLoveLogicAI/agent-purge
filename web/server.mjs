@@ -844,13 +844,13 @@ function saveDshProfile(payload) {
 
 function savePersona(payload) {
 	const id = payload.id;
-	if (typeof id !== "string" || !isValidId(id) || id !== id.trim()) throw httpError(400, "人设标识无效");
-	if (typeof payload.body !== "string" || !payload.body.trim()) throw httpError(400, "正文应为非空文本");
-	if (payload.meta !== undefined && !plainObject(payload.meta)) throw httpError(400, "meta 应为对象");
+	if (typeof id !== "string" || !isValidId(id) || id !== id.trim()) throw httpError(400, "Invalid persona ID");
+	if (typeof payload.body !== "string" || !payload.body.trim()) throw httpError(400, "Body must be nonempty text");
+	if (payload.meta !== undefined && !plainObject(payload.meta)) throw httpError(400, "meta must be an object");
 	if (payload.apply !== undefined) booleanField(payload, "apply");
 	return withControlLock(DATA, () => {
-		// 只覆盖表单带上来的键，其余 frontmatter（harness / order / description...）原样保留：
-		// 旧实现直接拿表单三个字段重写文件，点一次保存就把手写的键全吃掉
+		// Update only keys supplied by the form, preserving other frontmatter (harness / order / description...):
+		// the old implementation rewrote the file using three form fields and lost manually added keys.
 		const meta = { ...(getStore().read(id)?.meta ?? {}) };
 		const given = payload.meta && typeof payload.meta === "object" ? payload.meta : {};
 		for (const [k, v] of Object.entries(given)) {
@@ -859,14 +859,14 @@ function savePersona(payload) {
 			if (k === "model") continue;
 			meta[k] = typeof v === "string" ? v.trim() : v;
 		}
-		// 说明：README/模板的键是 description；旧 UI 发的是 desc，两边都认，写回只留 description
+		// README/templates use description; the old UI sent desc. Accept either but write only description.
 		const desc = given.description ?? given.desc;
 		if (desc !== undefined) {
 			meta.description = String(desc ?? "").trim();
 			delete meta.desc;
 			if (!meta.description) delete meta.description;
 		}
-		// 建议模型：多值用逗号分隔（UI 是单行 input），空 = 不限制（读时 asArray 兜底 ["*"]）
+		// Recommended models: comma-separated in the single-line UI; empty means unrestricted (asArray defaults to ["*"]).
 		if (given.model !== undefined) {
 			const list = (Array.isArray(given.model) ? given.model : String(given.model ?? "").split(","))
 				.map((s) => String(s).trim())
@@ -884,13 +884,13 @@ function savePersona(payload) {
 
 function deletePersona(id) {
 	return withControlLock(DATA, () => {
-		if (typeof id !== "string" || !isValidId(id)) throw httpError(400, "人设标识无效");
-		if (!getStore().read(id)) throw httpError(400, "找不到这个人设");
-		if (getStore().list().length <= 1) throw httpError(409, "至少保留一个人设");
+		if (typeof id !== "string" || !isValidId(id)) throw httpError(400, "Invalid persona ID");
+		if (!getStore().read(id)) throw httpError(400, "Persona not found");
+		if (getStore().list().length <= 1) throw httpError(409, "At least one persona must be retained");
 		const references = Object.entries(loadState(DATA).state.overrides ?? {}).filter(([, value]) => value?.persona === id).map(([harness]) => harness);
 		if (references.length) throw httpError(409, `人设仍被引用：${references.join("、")}，请先调整分家选择`);
 		const current = getStore().activeId() === id;
-		if (!getStore().remove(id)) throw httpError(400, "人设标识无效");
+		if (!getStore().remove(id)) throw httpError(400, "Invalid persona ID");
 		const applied = current ? applyConfiguration(DATA, { persona: getStore().activeId() }) : null;
 		return { ok: applied?.ok ?? true, active: getStore().activeId(), applied };
 	});
@@ -902,7 +902,7 @@ function usePersona(payload) {
 
 async function handleImportPersonas(payload) {
 	const source = String(payload?.source || "").trim();
-	if (!source) throw httpError(400, "导入源不能为空（请提供 GitHub 仓库如 ZiChuanLan/some-magic 或本地目录）");
+	if (!source) throw httpError(400, "Import source must not be empty (provide a GitHub repository such as ZiChuanLan/some-magic or a local directory)");
 	const overwrite = payload?.overwrite !== false;
 	const hasMirror = plainObject(payload) && Object.hasOwn(payload, "mirror");
 	const { importPersonas, normalizeMirror } = await import("../lib/persona-import.mjs");
@@ -924,7 +924,7 @@ async function handleImportPersonas(payload) {
 			applied,
 		};
 	} catch (e) {
-		throw httpError(400, `拉取人设失败: ${e.message}`);
+		throw httpError(400, `Failed to pull personas: ${e.message}`);
 	}
 }
 
