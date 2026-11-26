@@ -106,7 +106,7 @@ test("project：写入前文件 SHA 不一致时拒绝覆盖", () => {
 	const before = projectStatus(proj, root).find(row => row.id === "pi").sha;
 	writeFileSync(file, "外部编辑\n");
 	const result = projectInstall("pi", { root, active: "人设", dir: proj, expectSha: before });
-	assert.match(result.error, /外部修改/);
+	assert.match(result.error, /changed externally/);
 	assert.equal(readFileSync(file, "utf8"), "外部编辑\n");
 });
 
@@ -197,7 +197,7 @@ test("project：没有项目级落点的 harness 拒绝写入", () => {
 	const proj = join(dir, "proj3");
 	mkdirSync(proj, { recursive: true });
 	const r = projectInstall("codebuddy", { root: join(dir, "p3"), active: "x", dir: proj });
-	assert.match(r.error, /没有项目级规则文件/);
+	assert.match(r.error, /has no project-level rules file/);
 });
 
 test("project：重复开同一家不叠加块", () => {
