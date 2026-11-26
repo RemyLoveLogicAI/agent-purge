@@ -1214,7 +1214,7 @@ function renderSettings() {
   $('webdav-password').value = '';
   $('webdav-password').placeholder = webdav.hasPassword ? t('settings.webdavPasswordKeep') : t('settings.webdavPasswordUnset');
   $('backup-stamp').textContent = webdav.lastBackupAt
-    ? pick(`上次备份 ${fmtDateTime(webdav.lastBackupAt)}`, `Last backup ${fmtDateTime(webdav.lastBackupAt)}`)
+    ? `Last backup ${fmtDateTime(webdav.lastBackupAt)}`
     : 'No backups yet';
 }
 
@@ -1293,8 +1293,8 @@ async function saveWebdav({ test = false } = {}) {
   if (!test) return saved;
   const result = await api('webdav', { action: 'test' });
   settingsStatus('webdav-status', result.willCreateDir
-    ? pick(`连接正常（首次备份时将自动创建目录）：${result.url}`, `Connected (remote dir will be created on first backup): ${result.url}`)
-    : pick(`连接正常：${result.url}`, `Connected: ${result.url}`), 'good');
+    ? `Connected (remote dir will be created on first backup): ${result.url}`
+    : `Connected: ${result.url}`, 'good');
   return saved;
 }
 
@@ -1318,7 +1318,7 @@ $('webdav-backup')?.addEventListener('click', () => operation(() => runWebdavUi(
   const result = await api('webdav', { action: 'backup' });
   state.settings = (await api('settings')).settings;
   renderSettings();
-  settingsStatus('webdav-status', pick(`已备份 ${result.files} 个文件（${fmt(result.bytes)} 字节）→ ${result.remote}`, `Backed up ${result.files} file(s) (${fmt(result.bytes)} bytes) → ${result.remote}`), 'good');
+  settingsStatus('webdav-status', `Backed up ${result.files} file(s) (${fmt(result.bytes)} bytes) → ${result.remote}`, 'good');
   notify('Backup complete.', 'good');
 })));
 
@@ -1330,7 +1330,7 @@ $('webdav-restore')?.addEventListener('click', () => operation(async () => {
     const result = await api('webdav', { action: 'restore', confirm: true });
     await refresh({ resetDraft: true });
     renderSettings();
-    settingsStatus('webdav-status', pick(`已恢复 ${result.written.length} 个文件；本地快照：${result.snapshot || '未创建'}`, `Restored ${result.written.length} file(s); local snapshot: ${result.snapshot || 'none'}`), 'good');
+    settingsStatus('webdav-status', `Restored ${result.written.length} file(s); local snapshot: ${result.snapshot || 'none'}`, 'good');
     notify('Restored from backup; please review personas and settings.', 'good');
   });
 }));
