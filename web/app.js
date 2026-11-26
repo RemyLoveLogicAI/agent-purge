@@ -230,8 +230,8 @@ async function refresh({ resetDraft = false } = {}) {
 function render() {
   const p = state.personas.find(p => p.id === state.active);
   $('current-persona').textContent = personaName(p);
-  $('current-mode').textContent = pick(`${fmt(p?.chars)} 字 · ${state.personas.length} 份可用`, `${fmt(p?.chars)} chars · ${state.personas.length} available`);
-  $('persona-description').textContent = p?.meta?.description || p?.meta?.desc || pick('这份人设没有写说明。', 'No description for this persona.');
+  $('current-mode').textContent = `${fmt(p?.chars)} chars · ${state.personas.length} available`;
+  $('persona-description').textContent = p?.meta?.description || p?.meta?.desc || 'No description for this persona.';
   const activeCount = state.harnesses.filter(consoleOn).length;
   $('scope-count').textContent = String(activeCount);
   const consoleTargets = state.harnesses.filter(isReadyTarget);
@@ -1364,8 +1364,8 @@ $('persona-select').addEventListener('change', () => {
   draft.persona = $('persona-select').value;
   const p = state.personas.find(p => p.id === draft.persona);
   $('current-persona').textContent = personaName(p);
-  $('current-mode').textContent = pick(`${fmt(p?.chars)} 字 · ${state.personas.length} 份可用`, `${fmt(p?.chars)} chars · ${state.personas.length} available`);
-  $('persona-description').textContent = p?.meta?.description || p?.meta?.desc || pick('这份人设没有写说明。', 'No description for this persona.');
+  $('current-mode').textContent = `${fmt(p?.chars)} chars · ${state.personas.length} available`;
+  $('persona-description').textContent = p?.meta?.description || p?.meta?.desc || 'No description for this persona.';
   pulseClass($('current-persona'), 'is-swapping', 400);
   pulseClass(document.querySelector('.command-bar'), 'is-wiping', 560);
   renderConfigControls();
@@ -1629,7 +1629,7 @@ $('delete-persona').addEventListener('click', () => {
     editor = null; editorBaseline = '';
     $('editor-form').hidden = true; $('editor-empty').hidden = false;
     await refresh({ resetDraft: true });
-    announce(result, pick('人设已删除。', 'Persona deleted.'));
+    announce(result, 'Persona deleted.');
   });
 });
 
@@ -1663,11 +1663,11 @@ $('import-form')?.addEventListener('submit', async e => {
   startImportBtn.disabled = true; startImportBtn.textContent = t('import.pulling');
   importStatus.hidden = false; importStatus.className = 'status-box';
   importStatus.textContent = mirror
-    ? pick(`正在经镜像 ${mirror} 从 ${source} 拉取…`, `Pulling from ${source} via ${mirror}…`)
-    : pick(`正在从 ${source} 拉取…`, `Pulling from ${source}…`);
+    ? `Pulling from ${source} via ${mirror}…`
+    : `Pulling from ${source}…`;
   try {
     const res = await api('persona/import', { source, mirror, overwrite });
-    if (!res.ok) throw new Error(res.error || pick('拉取失败', 'Pull failed'));
+    if (!res.ok) throw new Error(res.error || 'Pull failed');
     if (res.settings && state) state.settings = res.settings;
     const { total = 0, imported = [] } = res.result || {};
     importStatus.className = 'status-box success';
@@ -1677,12 +1677,12 @@ $('import-form')?.addEventListener('submit', async e => {
       `Imported ${total} persona(s)${names ? ` (${names}${imported.length > 3 ? ', etc.' : ''})` : ''}.`,
     );
     await refresh();
-    notify(pick(`已拉取 ${total} 个人设。`, `Pulled ${total} persona(s).`), 'good');
+    notify(`Pulled ${total} persona(s).`, 'good');
     setTimeout(() => importDialog?.close(), 1200);
   } catch (err) {
     importStatus.className = 'status-box error';
-    importStatus.textContent = pick(`导入失败：${err.message}`, `Import failed: ${err.message}`);
-    notify(pick(`人设导入失败：${err.message}`, `Persona import failed: ${err.message}`), 'error');
+    importStatus.textContent = `Import failed: ${err.message}`;
+    notify(`Persona import failed: ${err.message}`, 'error');
   } finally {
     startImportBtn.disabled = false; startImportBtn.textContent = t('import.start');
   }
