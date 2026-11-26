@@ -41,6 +41,6 @@ test("harness off and dead-owner recovery preserve epoch revocation and lock own
   patchState(root,{overrides:{}});assert.equal(loadState(root).state.harnessEpochs.pi,epoch);assert.equal(readLaunch(root,loadState(root).state,"pi",lease.token),null);lease.close();
   writeFileSync(join(root,".apply.lock"),JSON.stringify({pid:2147483647,token:"dead"}));
   withControlLock(root,()=>patchState(root,{testLock:true}));assert.equal(loadState(root).state.testLock,true);assert.equal(existsSync(join(root,".apply.lock")),false);
-  writeFileSync(join(root,".apply.lock"),JSON.stringify({pid:process.pid,token:"live"}));assert.throws(()=>withControlLock(root,()=>{}),/另一个配置操作/);assert.equal(existsSync(join(root,".apply.lock")),true);
+  writeFileSync(join(root,".apply.lock"),JSON.stringify({pid:process.pid,token:"live"}));assert.throws(()=>withControlLock(root,()=>{}),/Another configuration operation/);assert.equal(existsSync(join(root,".apply.lock")),true);
  }finally{rmSync(root,{recursive:true,force:true});}
 });

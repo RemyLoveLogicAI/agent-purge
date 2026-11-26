@@ -114,7 +114,7 @@ export function serveWeb(port = 7788, opts = {}) {
 	const server = createServer((req, res) => {
 		handle(req, res, ctx).catch((e) => {
 			try {
-				send(res, e.statusCode ?? (/另一个配置操作|锁/.test(e.message) ? 409 : 500), { error: e.message });
+				send(res, e.statusCode ?? (/Another configuration operation|configuration lock/.test(e.message) ? 409 : 500), { error: e.message });
 			} catch {}
 		});
 	});

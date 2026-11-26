@@ -23,8 +23,8 @@ test("账本：按所有者去重；损坏时保留证据并停止写入", () =>
 	cancel(root, { kind: "file", path: file });
 	assert.equal(listLedger(root).length, 0);
 	writeFileSync(ledgerFile(root), "{not json");
-	assert.throws(() => listLedger(root), /账本损坏/);
-	assert.throws(() => record(root, { kind: "file", harness: "pi", channel: "shim", path: file, undo: { type: "file-delete" } }), /账本损坏/);
+	assert.throws(() => listLedger(root), /Footprint ledger is corrupt/);
+	assert.throws(() => record(root, { kind: "file", harness: "pi", channel: "shim", path: file, undo: { type: "file-delete" } }), /Footprint ledger is corrupt/);
 	assert.equal(readFileSync(ledgerFile(root), "utf8"), "{not json");
 });
 

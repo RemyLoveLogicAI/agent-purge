@@ -44,7 +44,7 @@ test('CLI use shares application path and rewrites installed static body',()=>{
 });
 test('exclusive apply lock rejects overlapping writer without altering state',()=>{
  const previous=text(join(root,'state.json'));writeFileSync(join(root,'.apply.lock'),JSON.stringify({pid:process.pid}));
- try{assert.throws(()=>applyConfiguration(root,{persona:'a'}),/另一个配置操作/);assert.equal(text(join(root,'state.json')),previous);}finally{rmSync(join(root,'.apply.lock'));}
+ try{assert.throws(()=>applyConfiguration(root,{persona:'a'}),/Another configuration operation/);assert.equal(text(join(root,'state.json')),previous);}finally{rmSync(join(root,'.apply.lock'));}
 });
 test('disableHarness cleans an installed block even when armed state was lost', () => {
  const file=targets.pi.file(); mkdirSync(join(file,'..'),{recursive:true}); writeFileSync(file,'USER RULES\n');
