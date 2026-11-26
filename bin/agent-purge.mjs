@@ -192,28 +192,28 @@ switch (cmd) {
 	case "upgrade": {
 		const { checkForUpdate, downloadFile, replaceSelfExecutable, canReplaceSelf, detectInstallType, RELEASES_PAGE } = await import("../lib/update.mjs");
 		const doDownload = argv.includes("--download") || argv.includes("-d") || argv.includes("--yes") || argv.includes("-y");
-		console.log("正在检查 GitHub Release 最新版本...");
+		console.log("Checking the latest GitHub Release...");
 		const info = await checkForUpdate({ force: true });
 		if (!info.ok) {
-			console.log(`✗ 检查更新失败：${info.error}`);
-			console.log(`  可手动访问发布页查看：${RELEASES_PAGE}`);
+			console.log(`✗ Update check failed: ${info.error}`);
+			console.log(`  Check the release page manually: ${RELEASES_PAGE}`);
 			process.exitCode = 1;
 			break;
 		}
 		const installType = detectInstallType();
-		console.log(`当前运行版本：v${info.current}（安装形态：${installType}）`);
+		console.log(`Current version: v${info.current} (installation type: ${installType})`);
 		if (info.published === false) {
-			console.log("尚无公开 Release；这不表示 npm 已是最新版。npm 安装可运行 npm outdated -g agent-purge。");
+			console.log("No public Release is available; this does not mean npm is up to date. For npm installations run npm outdated -g agent-purge.");
 			break;
 		}
-		console.log(`最新发布版本：v${info.latest} (${info.tagName || info.latest})`);
+		console.log(`Latest release: v${info.latest} (${info.tagName || info.latest})`);
 		if (!info.hasUpdate) {
-			console.log("\n✓ 当前已是最新版本！");
+			console.log("\n✓ Already up to date!");
 			break;
 		}
-		console.log(`\n⚡ 发现新版本：v${info.latest}！`);
+		console.log(`\n⚡ New version available: v${info.latest}！`);
 		if (info.body) {
-			console.log(`\n【更新说明】\n${info.body.trim().slice(0, 500)}${info.body.length > 500 ? "..." : ""}`);
+			console.log(`\n[Release notes]\n${info.body.trim().slice(0, 500)}${info.body.length > 500 ? "..." : ""}`);
 		}
 
 		// 源码检出：更新就是这个目录里的 git pull，不走发布产物
@@ -224,21 +224,21 @@ switch (cmd) {
 				console.log(`\n✗ ${state.reason}`);
 				break;
 			}
-			console.log(`\n当前分支：${state.branch}${state.upstream ? ` → ${state.upstream}` : "（无上游）"}`);
+			console.log(`\nCurrent branch: ${state.branch}${state.upstream ? ` → ${state.upstream}` : " (no upstream)"}`);
 			if (state.dirty) {
-				console.log(`✗ 工作区有 ${state.dirty} 处未提交改动，先提交或撤销再更新。`);
+				console.log(`✗ Working tree has ${state.dirty} uncommitted changes; commit or discard them before updating.`);
 				process.exitCode = 1;
 				break;
 			}
 			if (!doDownload) {
-				console.log(`  · 在安装目录快进更新：\n     agent-purge update --download`);
+				console.log(`  · Fast-forward the installation directory:\n     agent-purge update --download`);
 				break;
 			}
-			console.log("\n正在 git pull --ff-only...");
+			console.log("\nRunning git pull --ff-only...");
 			try {
 				const r = gitPullSelf();
 				if (r.output) console.log(`\n${r.output}`);
-				console.log(r.changed ? `✓ 已从 ${r.before} 快进到 ${r.after}。重启 agent-purge 生效。` : `✓ 已在 ${r.after}，没有新提交。`);
+				console.log(r.changed ? `✓ Fast-forwarded from ${r.before} to ${r.after}. Restart agent-purge to apply.` : `✓ Already at ${r.after}; no new commits.`);
 			} catch (error) {
 				console.log(`✗ ${error.message}`);
 				process.exitCode = 1;
@@ -250,41 +250,41 @@ switch (cmd) {
 		const targetSetupAsset = info.assets?.find((a) => a.name.toLowerCase().endsWith("-setup.exe"));
 
 		if (isExe && targetExeAsset) {
-			console.log(`\n检测到当前为独立 exe 运行环境，可直接原地升级。`);
+			console.log(`\nStandalone exe detected; it can be upgraded in place.`);
 			if (doDownload) {
 				const { tmpdir } = await import("node:os");
 				const tempTarget = join(tmpdir(), `agent-purge-new-${Date.now()}.exe`);
-				console.log(`正在下载 ${targetExeAsset.name} (${(targetExeAsset.size / 1024 / 1024).toFixed(1)} MB)...`);
+				console.log(`Downloading ${targetExeAsset.name} (${(targetExeAsset.size / 1024 / 1024).toFixed(1)} MB)...`);
 				await downloadFile(targetExeAsset.downloadUrl, tempTarget, (rec, tot) => {
-					if (tot > 0) process.stdout.write(`\r下载进度: ${((rec / tot) * 100).toFixed(1)}%`);
+					if (tot > 0) process.stdout.write(`\rDownload progress: ${((rec / tot) * 100).toFixed(1)}%`);
 				}, { expectedSize: targetExeAsset.size, digest: targetExeAsset.digest });
-				console.log("\n下载完成，正在安全替换当前可执行文件...");
+				console.log("\nDownload complete; safely replacing the executable...");
 				try { replaceSelfExecutable(tempTarget); } finally { const { rmSync } = await import("node:fs"); rmSync(tempTarget, { force: true }); }
-				console.log(`✓ 升级成功！当前 exe 已就绪为 v${info.latest}。重启 agent-purge 即可生效。`);
+				console.log(`✓ Upgrade complete! The exe is now v${info.latest}. Restart agent-purge to apply.`);
 				break;
 			}
-			console.log(`  · 自动下载并就地升级当前 exe：\n     agent-purge update --download`);
+			console.log(`  · Automatically download and upgrade this exe in place:\n     agent-purge update --download`);
 		} else if (process.platform === "win32" && targetSetupAsset && doDownload) {
 			const { tmpdir } = await import("node:os");
 			const tempSetup = join(tmpdir(), targetSetupAsset.name);
-			console.log(`正在下载安装包 ${targetSetupAsset.name}...`);
+			console.log(`Downloading installer ${targetSetupAsset.name}...`);
 			await downloadFile(targetSetupAsset.downloadUrl, tempSetup, undefined, { expectedSize: targetSetupAsset.size, digest: targetSetupAsset.digest });
-			console.log(`\n下载完成，正在启动安装程序：${tempSetup}`);
+			console.log(`\nDownload complete; starting installer: ${tempSetup}`);
 			const { spawn } = await import("node:child_process");
 			spawn(tempSetup, [], { detached: true, stdio: "ignore" }).unref();
 			process.exit(0);
 		}
 
-		console.log("\n【下载与升级方式】");
-		console.log(`  1. 访问 GitHub Release 页面直接下载：\n     ${info.htmlUrl}`);
+		console.log("\n[Download and upgrade]");
+		console.log(`  1. Download from the GitHub Release page:\n     ${info.htmlUrl}`);
 		if (info.assets?.length) {
-			console.log("  2. Release 包含的安装/便携产物：");
+			console.log("  2. Installers and portable artifacts in the Release:");
 			for (const a of info.assets) {
 				const sizeMb = (a.size / 1024 / 1024).toFixed(1);
 				console.log(`     · ${a.name} (${sizeMb} MB) → ${a.downloadUrl}`);
 			}
 		}
-		console.log("  3. 若通过 npm 全局安装，可直接执行：\n     npm install -g agent-purge@latest");
+		console.log("  3. For a global npm installation, run:\n     npm install -g agent-purge@latest");
 		break;
 	}
 	case "web":
@@ -296,7 +296,7 @@ switch (cmd) {
 		const dryRun = argv.includes("--dry-run");
 		// --keep-failed：还原不了的旧账本只记一笔，退出码不为红，卸载不至于被一条早已失效的记录永久卡住。
 		const keepFailed = argv.includes("--keep-failed");
-		if (dryRun) console.log("dry-run：只报会做什么，一条也不写\n");
+		if (dryRun) console.log("dry-run: preview actions only; nothing will be written\n");
 		const r = clean(DATA, { all: cmd === "self-uninstall", dryRun, keepFailed });
 		for (const s of r.steps) {
 			const detail = typeof s.detail === "string" ? s.detail : JSON.stringify(s.detail);
