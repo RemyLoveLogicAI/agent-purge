@@ -31,11 +31,11 @@ test("antigravity: install writes managed block into global AGENTS.md", () => {
 	});
 });
 
-test("antigravity: strict mode 不写「取代上方身份」这类覆盖语义", () => {
+test("antigravity: strict mode does not write override semantics such as replacing the preceding identity", () => {
 	withHome((dir) => {
 		installAntigravity(dir, { personaText: "AGY_PERSONA", mode: "strict" });
 		const text = readFileSync(antigravityAgentsFile(), "utf8");
-		assert.doesNotMatch(text, /取代你上方的身份设定/);
+		assert.doesNotMatch(text, /\u53d6\u4ee3\u4f60\u4e0a\u65b9\u7684\u8eab\u4efd\u8bbe\u5b9a/);
 		assert.match(text, /AGY_PERSONA/);
 	});
 });
@@ -44,8 +44,8 @@ test("antigravity: append mode has no strict preamble", () => {
 	withHome((dir) => {
 		installAntigravity(dir, { personaText: "AGY_PERSONA", mode: "append" });
 		const text = readFileSync(antigravityAgentsFile(), "utf8");
-		assert.doesNotMatch(text, /取代你上方的身份设定/);
-		assert.doesNotMatch(text, /最高优先级/);
+		assert.doesNotMatch(text, /\u53d6\u4ee3\u4f60\u4e0a\u65b9\u7684\u8eab\u4efd\u8bbe\u5b9a/);
+		assert.doesNotMatch(text, /\u6700\u9ad8\u4f18\u5148\u7ea7/);
 	});
 });
 
@@ -112,7 +112,7 @@ test("antigravity: temporary install restores exact bytes and keeps a persistent
 		const back = readFileSync(file, "utf8");
 		assert.equal(back, persistBytes);
 		assert.match(back, /PERSISTENT_PERSONA/);
-		undo(); // 幂等
+		undo(); // idempotent
 		assert.equal(readFileSync(file, "utf8"), persistBytes);
 	});
 });
