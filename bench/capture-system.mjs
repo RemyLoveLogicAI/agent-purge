@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Real installed binaries → isolated HOME → loopback fixture; no model-identity self reports.
-// 抓取主体在 lib/capture.mjs（`agent-purge verify` 复用同一份），这里只剩编排、热切与报告。
+// Capture logic lives in lib/capture.mjs (also used by `agent-purge verify`); this file handles orchestration, hot switching, and reporting.
 import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

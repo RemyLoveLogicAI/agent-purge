@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 export function verificationSummary(report) {
  return {schema:1,at:report.at,reportPath:report.out,kind:report.kind,limitations:report.limitations??[],results:report.harnesses.map(h=>{
   const modes=(h.modes??[]).map(m=>({mode:m.mode,status:m.status,reason:m.reason??null,exitCode:m.exitCode,timedOut:m.timedOut,requests:(m.requests??[]).filter(r=>r.kind==='main').map(r=>({roles:r.roles,chars:r.chars,markerCount:r.markerCount,identityLines:r.identityLines,toolDefinitions:r.toolDefinitions}))}));
-  const evidence=modes.map(m=>`${m.mode}: ${m.status} · ${m.requests.map(r=>`${r.roles.join('+')} ${r.chars}字 / 人设${r.markerCount} / 身份句${r.identityLines.length} / 工具${r.toolDefinitions}`).join('; ')}`).join('；');
+  const evidence=modes.map(m=>`${m.mode}: ${m.status} · ${m.requests.map(r=>`${r.roles.join('+')} ${r.chars} chars / persona ${r.markerCount} / identity lines ${r.identityLines.length} / tools ${r.toolDefinitions}`).join('; ')}`).join('; ');
   return {harness:h.harness,version:h.version||null,status:h.status,reason:h.reason||null,at:report.at,scope:h.scope??null,processFile:h.processFile??null,evidence,modes,hotSwitch:h.hotSwitch??{status:'not-tested'}};
  })};
 }

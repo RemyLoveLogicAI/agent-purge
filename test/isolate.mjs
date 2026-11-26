@@ -1,4 +1,4 @@
-// 在任何配置模块求值前隔离全部落点；即使单独运行测试也不借用真实用户目录。
+// Isolate all locations before configuration modules are evaluated, even when a test runs alone; never use the real user directory.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

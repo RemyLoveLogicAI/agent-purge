@@ -460,7 +460,7 @@ main {
 .chip.is-bad {
   background: var(--bad-soft); color: var(--bad); border-color: var(--bad-line);
 }
-/* 未来支持：未确定能不能接管的家。灰掉，不参与「可接管」的视觉权重。 */
+/* Future support: hosts whose takeover capability is unconfirmed are muted and excluded from the enabled visual emphasis. */
 .chip.is-future {
   background: var(--surface-2); color: var(--muted); border-color: var(--line);
 }
@@ -1261,7 +1261,7 @@ main {
   margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft);
   display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
 }
-/* 设置页的按钮行：比 panel-foot 宽松，按钮和状态文字排在同一行 */
+/* Settings button row: more spacious than panel-foot; buttons and status text share a row */
 .settings-actions {
   margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;

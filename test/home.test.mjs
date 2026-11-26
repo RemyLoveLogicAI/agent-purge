@@ -16,7 +16,7 @@ test.after(() => {
 	rmSync(dir, { recursive: true, force: true });
 });
 
-test("home：旧包目录里的 state、人设、账本和 stash 一起搬走", () => {
+test("home: migrate state, personas, ledger and stash together from the old package directory", () => {
 	const pkg = join(dir, "pkg");
 	mkdirSync(join(pkg, "personas"), { recursive: true });
 	mkdirSync(join(pkg, "stash"), { recursive: true });
@@ -32,5 +32,5 @@ test("home：旧包目录里的 state、人设、账本和 stash 一起搬走", 
 	assert.equal(readFileSync(join(home, "personas", "alpha.md"), "utf8"), "PERSONA_ALPHA");
 	assert.equal(readFileSync(join(home, "footprints.json"), "utf8"), JSON.stringify({ version: 1, entries: [] }));
 	assert.equal(readFileSync(join(home, "stash", "a.json"), "utf8"), JSON.stringify({ file: "AGENTS.md" }));
-	assert.equal(existsSync(join(pkg, "state.json")), true, "旧文件保留作备份");
+	assert.equal(existsSync(join(pkg, "state.json")), true, "old files remain as backups");
 });
