@@ -45,7 +45,7 @@ const matrix = (() => {
 	try {
 		return JSON.parse(readResource("matrix.json").toString("utf8"));
 	} catch (error) {
-		throw new Error(`无法加载执行器矩阵 matrix.json：${error.message}`, { cause: error });
+		throw new Error(`Cannot load harness matrix matrix.json: ${error.message}`, { cause: error });
 	}
 })();
 let store = null;
@@ -124,10 +124,10 @@ export function serveWeb(port = 7788, opts = {}) {
 		}
 		// When an old instance occupies the port, --detach is silent; explain the issue so users know the UI is stale.
 		if (e.code === "EADDRINUSE") {
-			console.error(`${port} 已被占用：老实例还在跑（可能是改动前的版本，UI 会是旧的）。`);
-			console.error(`清掉再启：Get-NetTCPConnection -LocalPort ${port} -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`);
+			console.error(`Port ${port} is in use: an older instance is still running and may show an outdated UI.`);
+			console.error(`Stop it and restart: Get-NetTCPConnection -LocalPort ${port} -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`);
 		} else {
-			console.error(`web 启动失败：${e.message}`);
+			console.error(`Web startup failed: ${e.message}`);
 		}
 		process.exit(1);
 	});
@@ -138,7 +138,7 @@ export function serveWeb(port = 7788, opts = {}) {
 }
 
 async function handle(req, res, ctx = {}) {
-	if (!localHost(req)) return send(res, 403, { error: "只接受本机 Host" });
+	if (!localHost(req)) return send(res, 403, { error: "Only local Host headers are accepted" });
 	const url = new URL(req.url, "http://127.0.0.1");
 	const p = url.pathname;
 
@@ -148,7 +148,7 @@ async function handle(req, res, ctx = {}) {
 
 	// CSRF protection: a local POST can change configuration; cross-site pages can send simple text/plain requests.
 	// Allow only same-origin requests: Origin host must exactly match request Host, including port.
-	if (isMutating(req.method) && !sameOrigin(req)) return send(res, 403, { error: "只接受本机同源请求" });
+	if (isMutating(req.method) && !sameOrigin(req)) return send(res, 403, { error: "Only local same-origin requests are accepted" });
 
 	if (req.method === "GET" && (p === "/" || p === "/index.html")) return html(res, ctx);
 	const assets = { '/app.js': 'text/javascript', '/model.mjs': 'text/javascript', '/i18n.mjs': 'text/javascript', '/evidence.mjs': 'text/javascript', '/styles.css': 'text/css' };
@@ -193,7 +193,7 @@ async function handle(req, res, ctx = {}) {
 		return send(res, 200, { ok: true, now: Date.now(), autoExit: Boolean(ctx.autoExit) });
 	}
 	if (req.method === "POST" && p === "/api/exit") {
-		send(res, 200, { ok: true, message: "服务正在退出" });
+		send(res, 200, { ok: true, message: "Service is exiting" });
 		if (typeof ctx.shutdown === "function") {
 			setTimeout(() => ctx.shutdown(0), 100);
 		} else {
@@ -336,7 +336,7 @@ async function handle(req, res, ctx = {}) {
 						resolve(send(res, 500, {
 							ok: false,
 							type: "npm",
-							error: `npm 执行出错：${error.message}`,
+							error: `npm failed: ${error.message}`,
 							output: (stderr || stdout || "").trim(),
 							command: "npm install -g agent-purge@latest"
 						}));
@@ -355,7 +355,7 @@ async function handle(req, res, ctx = {}) {
 
 		const info = await checkForUpdate({ force: true });
 		if (!info.ok || !info.hasUpdate) {
-			return send(res, 400, { error: info.error || "GitHub Release 暂无可用新版本" });
+			return send(res, 400, { error: info.error || "No newer GitHub Release is available" });
 		}
 		const targetExe = info.assets?.find((a) => a.name.toLowerCase() === "agent-purge.exe");
 		const targetSetup = info.assets?.find((a) => a.name.toLowerCase().endsWith("-setup.exe"));
@@ -375,7 +375,7 @@ async function handle(req, res, ctx = {}) {
 			spawn(tempSetup, [], { detached: true, stdio: "ignore" }).unref();
 			return send(res, 200, { ok: true, type: "setup", version: info.latest, message: "安装程序已启动，请按界面向导完成安装。" });
 		}
-		return send(res, 400, { error: "未在 Release 中找到适配 Windows 的升级安装文件，请前往页面手动下载。" });
+		return send(res, 400, { error: "No Windows upgrade installer was found in the Release. Download it manually from the release page." });
 	}
 	if (req.method === "POST" && p === "/api/verify") {
 		const { harness } = await body(req);
@@ -1116,10 +1116,10 @@ if (isEntry && process.argv.includes("--serve")) {
 	const claim = registerInstance(dataHome(), servePort);
 	if (!claim.ok) {
 		if (claim.error) {
-			console.error(`控制台实例登记失败：${claim.error.message}`);
+			console.error(`Could not register console instance: ${claim.error.message}`);
 			process.exit(1);
 		}
-		console.log(`agent-purge 控制台已在运行（端口 ${claim.existing?.port ?? "?"}），无需重复启动。`);
+		console.log(`agent-purge console is already running (port ${claim.existing?.port ?? "?"}); no need to start it again.`);
 		process.exit(0);
 	}
 	serveWeb(servePort, {
