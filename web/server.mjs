@@ -1,5 +1,5 @@
-// 零依赖 Web 服务：配置台。选默认 harness/mode、管理 persona、常驻安装、探测。
-// 刻意不做"运行"：交互式 harness 属于终端/桌面，Web 只负责选（见 ARCHITECTURE.md）。
+// Zero-dependency Web service: select defaults, manage personas, install persistently and detect hosts.
+// Intentionally does not run interactive harnesses; terminal/desktop handle execution and Web handles selection (see ARCHITECTURE.md).
 import { createServer } from "node:http";
 import { readFileSync, existsSync, lstatSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -30,7 +30,7 @@ import { saveSettings, settingsOf, settingsWithSecret, noteWebdavRun } from "../
 import { resolveLocale } from "../lib/i18n.mjs";
 import { applyArchive, backup as backupToWebdav, download as downloadBackup, pruneSnapshots, testConnection as testWebdavConnection } from "../lib/webdav.mjs";
 
-// 数据（state.json + personas/）在用户目录，不在安装目录
+// Data (state.json + personas/) lives in the user directory, not the installation directory.
 const DATA = dataHome();
 // 运行期真正被改写的层（≠ bench 能测到的层）：每家只有它自己暴露的那一个写入点。
 // sys = 系统提示/配置文件/插件 splice；user = 只落在用户消息里（zcode 的 hook）。
@@ -50,7 +50,7 @@ const matrix = (() => {
 })();
 let store = null;
 function getStore() { return (store ??= createStore(DATA)); }
-// 同一次实测会拉起真 harness 子进程：同一家同时只能跑一份。
+// A verification launches a real harness subprocess: only one per harness can run at once.
 const verifying = new Set();
 
 export function serveWeb(port = 7788, opts = {}) {
@@ -63,8 +63,8 @@ export function serveWeb(port = 7788, opts = {}) {
 		hasConnected: false,
 	};
 
-	// gen：每次发出页面 HTML 都 +1。页面卸载时带着自己那份 gen 上报，
-	// 过期的（上一个页面）一律忽略——否则旧页面的 beacon 晚到，会把刚刷出来的新页面一起带走。
+	// Increment gen whenever page HTML is served; page unload reports its own generation,
+	// and stale generations are ignored so late beacons cannot stop the newly reloaded page.
 	const ctx = { heartbeatState, autoExit, desktop, exitPolicy, gen: 0, leaveTimer: null };
 
 	let autoExitTimer = null;
@@ -83,8 +83,8 @@ export function serveWeb(port = 7788, opts = {}) {
 		}
 	};
 
-	// 页面离开 / 心跳断了之后要不要退：设置项可能在运行中被改，
-	// 所以每次窗口消失时现读，而不是启动时拍一次快照（issue #14 的「留下连不上的旧页面」）。
+	// The setting controlling exit after page departure or heartbeat loss may change while running,
+	// so read it when the window disappears rather than only at startup (issue #14).
 	const shouldExit = () => {
 		try { return typeof exitPolicy === "function" ? exitPolicy() !== false : true; } catch { return true; }
 	};
@@ -98,8 +98,8 @@ export function serveWeb(port = 7788, opts = {}) {
 					shutdown(0);
 				}
 			} else if (now - heartbeatState.lastHeartbeat > heartbeatTimeout) {
-				// 桌面窗口还活着就继续等：窗口是这个实例的本体。服务先退只会留下一扇连不上的旧页面，
-				// 下次启动又会补开一扇新的——「反复开多个主页」就是这么来的（issue #14）。
+				// Keep waiting while the desktop window is alive. If the service exits first, it leaves an unreachable page,
+				// and the next launch opens another window (issue #14).
 				let alive = false;
 				try { alive = typeof windowAlive === "function" && windowAlive() === true; } catch {}
 				if (!alive && shouldExit()) shutdown(0);
@@ -110,7 +110,7 @@ export function serveWeb(port = 7788, opts = {}) {
 
 	ctx.shutdown = shutdown;
 
-	// handle 是 async：任何异常都在这里收口，否则请求会挂着不响应
+	// handle is async: catch exceptions here so requests do not hang.
 	const server = createServer((req, res) => {
 		handle(req, res, ctx).catch((e) => {
 			try {
@@ -122,7 +122,7 @@ export function serveWeb(port = 7788, opts = {}) {
 		if (typeof onError === "function") {
 			try { await onError(e); return; } catch {}
 		}
-		// 端口被旧实例占着的时候，--detach 是静默的 → 这里必须说人话，否则用户看到的是旧 UI
+		// When an old instance occupies the port, --detach is silent; explain the issue so users know the UI is stale.
 		if (e.code === "EADDRINUSE") {
 			console.error(`${port} 已被占用：老实例还在跑（可能是改动前的版本，UI 会是旧的）。`);
 			console.error(`清掉再启：Get-NetTCPConnection -LocalPort ${port} -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`);
@@ -142,12 +142,12 @@ async function handle(req, res, ctx = {}) {
 	const url = new URL(req.url, "http://127.0.0.1");
 	const p = url.pathname;
 
-	// 有请求就说明还有页面活着（刷新、重开、资源加载都算）：撤掉上一个页面留下的退出倒计时。
-	// 关键：刷新时 pagehide 先发、新页面请求随后到，这里负责把"刷新"和"关窗口"分开。
+	// A request means a page is alive (including reload, reopening or asset loading): cancel the previous shutdown countdown.
+	// On reload pagehide arrives before the new request; this distinguishes reload from window closure.
 	clearLeave(ctx);
 
-	// 防 CSRF：本机 Web 页面能 POST 就能写配置/改人设；跨站页面用 text/plain 也能发“简单请求”。
-	// 只放同源：Origin 的 host 必须和本次请求的 Host 完全一致（端口不同也挡住）。
+	// CSRF protection: a local POST can change configuration; cross-site pages can send simple text/plain requests.
+	// Allow only same-origin requests: Origin host must exactly match request Host, including port.
 	if (isMutating(req.method) && !sameOrigin(req)) return send(res, 403, { error: "只接受本机同源请求" });
 
 	if (req.method === "GET" && (p === "/" || p === "/index.html")) return html(res, ctx);
@@ -156,21 +156,21 @@ async function handle(req, res, ctx = {}) {
 		res.writeHead(200, { 'content-type': `${assets[p]}; charset=utf-8`, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
 		return res.end(readResource(p === '/evidence.mjs' ? 'lib/evidence.mjs' : `web/${p.slice(1)}`));
 	}
-	// web/assets/ 下的真实品牌图标（png/jpg/webp/ico），固定白名单后缀 + 只认单层文件名，不走路径拼接。
+	// Brand icons under web/assets/: allowlisted extensions and single-level filenames only.
 	if (req.method === "GET" && p.startsWith("/assets/")) {
 		const name = p.slice("/assets/".length);
 		const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.svg': 'image/svg+xml' };
 		const ext = name.slice(name.lastIndexOf('.'));
 		if (!name.includes('/') && !name.includes('..') && Object.hasOwn(mime, ext)) {
 			try {
-				// 图标会被换（官方图源改了/我改错了），一律 no-store：本地工具不值得为 24h 缓存换来“改了看不到”。
+				// Icons may change, so use no-store rather than retaining stale assets in a 24-hour cache.
 				res.writeHead(200, { 'content-type': mime[ext], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
 				return res.end(readResource(`web/assets/${name}`));
-			} catch { /* 落到 404 */ }
+			} catch { /* Fall through to 404 */ }
 		}
 		return send(res, 404, { error: "not found" });
 	}
-// 单例探针：只报身份，不碰 detect/状态重组，保证在服务忙的时候也能秒回。
+// Singleton probe reports identity without detection or state assembly, keeping it responsive while the service is busy.
 	if (req.method === "GET" && p === "/api/instance") {
 		return send(res, 200, { app: "agent-purge", pid: process.pid, port: req.socket.localPort, version: currentVersion() });
 	}
@@ -202,13 +202,13 @@ async function handle(req, res, ctx = {}) {
 		return;
 	}
 	if (req.method === "POST" && p === "/api/leave") {
-		// 页面卸载（刷新/关标签/关窗口）时发的信号。刷新和关窗口在浏览器里长得一样，
-		// 所以这里不立刻退：先等宽限期，新页面只要发出任何请求就会撤销（见 clearLeave）。
-		// 源码态 `agent-purge web` 归终端管，页面来去与它无关——永不自杀。
+		// Page unload signal (reload, tab close or window close). Browsers cannot distinguish reload from window close,
+		// so wait a grace period; any request from the new page cancels exit (see clearLeave).
+		// Source-mode `agent-purge web` is terminal-managed and does not exit when pages leave.
 		req.resume();
 		const gen = url.searchParams.get("gen");
 		const live = Boolean(ctx.autoExit) && gen !== null && gen === String(ctx.gen);
-		// 窗口形态下「关窗是否退出」由设置决定：改成常驻后，关窗只让页面走、服务留下
+		// In window mode the setting determines whether closing exits; persistent mode leaves the service running.
 		const exitNow = live && (typeof ctx.exitPolicy === "function" ? ctx.exitPolicy() !== false : true);
 		if (exitNow) {
 			ctx.leaveTimer = setTimeout(() => { ctx.leaveTimer = null; ctx.shutdown(0); }, LEAVE_GRACE);
@@ -263,8 +263,8 @@ async function handle(req, res, ctx = {}) {
 		if (npm.ok && npm.latest && compareSemver(latest, npm.latest) > 0) {
 			latest = npm.latest;
 		}
-		// 源码检出还有第二种「有更新」：上游多了提交但版本号没变。只有手动刷新才 fetch，
-		// 否则每次开面板都要连一次 GitHub。
+		// A source checkout can also have upstream commits without a version change. Fetch only on manual refresh,
+		// otherwise every panel opening would contact GitHub.
 		const git = installType === "git" ? gitTrackState({ fetch: force }) : null;
 		const behind = Number(git?.behind) > 0;
 		const hasUpdate = compareSemver(current, latest) > 0 || behind;
@@ -305,7 +305,7 @@ async function handle(req, res, ctx = {}) {
 		const installType = detectInstallType();
 		const upgradeType = reqPayload?.type || installType;
 
-		// 源码检出：更新就是在这个目录里 git pull，不下载任何发布产物。
+		// Source checkout: update by git pull in this directory, without downloading release artifacts.
 		// --ff-only 由 gitPullSelf 保证：从面板点出来的更新不该悄悄造一个合并提交。
 		if (upgradeType === "git") {
 			try {
