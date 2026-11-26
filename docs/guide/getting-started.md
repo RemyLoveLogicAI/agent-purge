@@ -1,56 +1,56 @@
-# 快速开始
+# Getting started
 
-## 环境要求
+## Requirements
 
-需要 **Node.js 20+**，并先在本机安装你要管理的 coding agent。agent-purge 本身不打包任何模型或凭据。
+You need **Node.js 20 or later** and must first install the coding agents you want to manage locally. agent-purge does not bundle models or credentials.
 
-## 安装
+## Install
 
 ```bash
 npm install -g agent-purge
 agent-purge web
 ```
 
-也可以直接运行 `npx agent-purge web`，无需全局安装。
+You can also run `npx agent-purge web` without installing globally.
 
-## 三步上手
+## Get started in three steps
 
-1. 在**「人设库」**编辑起步模板或新建人设（支持从 GitHub 仓库或本地目录批量拉取）。
-2. 回到**「控制台」**选择人设与默认力度、保存设置，打开目标工具开关或点开右侧详情工作区调优通道。
-3. 在**「规则文件」**为指定项目目录或全局配置目录追加规则块（默认在原文件末尾 append，随时可无损移除）。
+1. In **Personas**, edit the starter template or create a persona. Bulk pulls from GitHub repositories or local directories are supported.
+2. Return to the **Console**, select a persona and default mode, save settings, then enable the target tools or open their details to tune channels.
+3. Under **Rule Files**, append managed rule blocks to selected project directories or global configuration directories. Blocks are appended to the existing file by default and can be removed without loss.
 
-控制台默认监听 `http://127.0.0.1:7788`；若端口被系统保留或占用，会自动顺延至 `7890–7909` 空闲端口并打开独立桌面窗口（瘦包与安装器用自带的 WebView2 窗口宿主，窗口属于本应用；缺少 WebView2 时退回 Chrome / Edge 的 `--app` 模式）。桌面端是单例：重复启动只会把已打开的窗口叫到前台。外观主题（自动跟随系统 / 浅色 / 深色，也可用顶栏右侧的日/月按钮切换）、窗口的关闭行为（关窗退出 / 留在后台、关窗是否先确认）在「设置」页调整，改完立刻生效；WebDAV 备份也在同一页。**首次启动不会自动接管任何工具。**
+The console normally listens on `http://127.0.0.1:7788`. If the port is reserved or in use, it falls forward to an available port in `7890–7909` and opens a standalone desktop window. The thin package and installer use the bundled WebView2 window host; without WebView2, they fall back to Chrome or Edge `--app` mode. The desktop app is single-instance: launching again brings the open window to the foreground. The Settings page controls appearance (automatic, light, or dark, also switchable with the top-bar sun/moon button), close behavior (quit or stay in the background and whether to confirm), and WebDAV backup. Changes apply immediately. **No tool is automatically armed on first launch.**
 
-## 平台与安装形式
+## Platforms and installation formats
 
-| 形式 | 运行要求 | 适用场景 |
+| Format | Requirements | Use |
 |---|---|---|
-| npm | Node.js 20+ | 用 npm 安装与升级 |
-| `agent-purge-<版本>-setup.exe` | Windows，外部 Node.js 20+ | 图形安装和卸载 |
-| `agent-purge-<版本>.zip` | Windows，外部 Node.js 20+ | 解压后使用 |
-| `agent-purge.exe` | Windows x64，自带运行时 | 无需另装 Node 的独立便携版 |
-| `agent-purge-<版本>-darwin-arm64.dmg` / `x64.dmg` | macOS 12+（Apple Silicon / Intel，自带运行时） | 未签名 `.app` 磁盘镜像，拖入 `/Applications` 后首次需右键「打开」或 `xattr -cr` 放行 |
-| `agent-purge-<版本>-linux-x64` / `-linux-arm64` | 主流 Linux 发行版（自带运行时） | 单文件二进制，`chmod +x` 后直接运行 |
-| `agent-purge-<版本>-linux-<架构>.tar.gz` | 主流 Linux 发行版 | 便携包，含 `.desktop`、图标与免 root 的 `install.sh` |
-| `agent-purge-<版本>-linux-<架构>.deb` | Debian / Ubuntu 及衍生版 | `sudo apt install ./*.deb`，注册 `/usr/bin/agent-purge` 与桌面入口 |
-| `agent-purge-<版本>-linux-<架构>.AppImage` | 主流 Linux 发行版（存在时才有） | 双击或用 `--appimage-extract-and-run` 直接启动控制台 |
+| npm | Node.js 20+ | Install and upgrade with npm |
+| `agent-purge-<version>-setup.exe` | Windows, external Node.js 20+ | Graphical installation and removal |
+| `agent-purge-<version>.zip` | Windows, external Node.js 20+ | Extract and run |
+| `agent-purge.exe` | Windows x64, bundled runtime | Standalone portable executable without a separate Node installation |
+| `agent-purge-<version>-darwin-arm64.dmg` / `x64.dmg` | macOS 12+ (Apple Silicon / Intel, bundled runtime) | Unsigned `.app` disk image; drag into `/Applications`, then right-click Open or use `xattr -cr` on first launch |
+| `agent-purge-<version>-linux-x64` / `-linux-arm64` | Major Linux distributions, bundled runtime | Single-file binary; run after `chmod +x` |
+| `agent-purge-<version>-linux-<arch>.tar.gz` | Major Linux distributions | Portable package with `.desktop`, icon, and root-free `install.sh` |
+| `agent-purge-<version>-linux-<arch>.deb` | Debian, Ubuntu, and derivatives | `sudo apt install ./*.deb`; registers `/usr/bin/agent-purge` and a desktop entry |
+| `agent-purge-<version>-linux-<arch>.AppImage` | Major Linux distributions, when available | Double-click or use `--appimage-extract-and-run` to launch the console |
 
-下载附件以实际 [GitHub Releases](https://github.com/ZiChuanLan/agent-purge/releases) 为准；未发布的版本没有附件。请核对 SHA-256 和签名状态，未签名程序可能出现系统提示。ZIP 中的 EXE 是薄启动器，不是自带运行时的独立版。
+Available downloads are listed in [GitHub Releases](https://github.com/ZiChuanLan/agent-purge/releases); unreleased versions have no attachments. Check SHA-256 and signature status. Unsigned programs can trigger system warnings. The EXE inside the ZIP is a thin launcher, not the standalone version with a bundled runtime.
 
-SSH / WSL 等无桌面环境使用 `agent-purge web --no-open`。Web 仅监听本机；Linux 可用 npm / 源码入口或 Release 里的二进制、`.tar.gz`、`.deb`（AppImage 随 runner 能力可选生成），macOS 可用 npm / 源码或 `.dmg` 镜像（`.dmg` 未经 Apple 签名与公证）。平台验证范围见[兼容性说明](/reference/compatibility)。
+For SSH, WSL, and other environments without a desktop, use `agent-purge web --no-open`. The Web console listens only locally. On Linux, use npm, source, or release binaries, `.tar.gz`, or `.deb`; an AppImage is optionally generated depending on runner capabilities. On macOS, use npm, source, or a `.dmg` image; the `.dmg` is not signed or notarized by Apple. See [compatibility](/reference/compatibility) for platform verification coverage.
 
-## 升级
+## Upgrade
 
-控制台右上角的版本角标点开就是升级入口，按安装形态自动选路：
+The version badge in the upper right of the console opens the upgrade path appropriate to the installation:
 
-- 独立 EXE：下载并就地热替换
-- npm 全局安装：调 `npm install -g`
-- **源码检出**（`git clone` 后直接 `node bin/agent-purge.mjs`）：在安装目录执行 `git pull --ff-only`，不下载任何发布产物
+- Standalone EXE: download and replace in place.
+- Global npm installation: run `npm install -g`.
+- **Source checkout** (`git clone`, then run `node bin/agent-purge.mjs`): run `git pull --ff-only` in the installation directory; no release artifacts are downloaded.
 
-源码检出的「有没有更新」按上游提交算，版本号没变也会提示；工作区有未提交改动、处于游离 HEAD 或分支没有上游时一律拒绝并说明原因。
+For a source checkout, update detection compares upstream commits and can report updates even if the version number has not changed. It refuses and explains why if the working tree has uncommitted changes, HEAD is detached, or the branch has no upstream.
 
-## 下一步
+## Next steps
 
-- [人设与模式](/guide/personas-and-modes) —— 四种处理模式到底改了什么
-- [应用范围](/guide/scope) —— 单次启动、常驻、命令接管、项目规则四类通道
-- [支持情况](/reference/support) —— 每个宿主的实测净化和残留
+- [Personas and modes](/guide/personas-and-modes): what the four modes change.
+- [Application scope](/guide/scope): one-time launch, persistent, command takeover, and project rule channels.
+- [Support matrix](/reference/support): measured purge and residue for each host.
