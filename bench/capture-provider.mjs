@@ -7,34 +7,34 @@ const textOf = content => typeof content === 'string' ? content : Array.isArray(
 export function inspectRequest(body, marker = '') {
  const sections=[];
  if(body.system) sections.push({role:'system',field:'system',text:textOf(body.system)});
- // Augment（auggie）：system 层是顶层字符串 system_prompt；rules / user_guidelines 是追加的规则数组。
+ // Augment (auggie): the system layer is the top-level system_prompt string; rules / user_guidelines are appended rule arrays.
  if(typeof body.system_prompt==='string') sections.push({role:'system',field:'system_prompt',text:body.system_prompt});
  for(const key of ['rules','user_guidelines','workspace_guidelines']) if(Array.isArray(body[key])) sections.push({role:'system',field:key,text:body[key].map(r=>typeof r==='string'?r:(r?.content??r?.text??'')).join('\n')});
  if(body.instructions) sections.push({role:'system',field:'instructions',text:textOf(body.instructions)});
  for(const key of ['messages','input']) if(Array.isArray(body[key])) body[key].forEach((m,i)=>{if(['system','developer','user'].includes(m.role))sections.push({role:m.role,field:`${key}[${i}].content`,text:textOf(m.content)});});
- // Gemini 原生协议：systemInstruction.parts + contents[]（role 是 user/model，没有 system 角色）
+ // Gemini native protocol: systemInstruction.parts + contents[] (roles are user/model, with no system role).
  if(body.systemInstruction) sections.push({role:'system',field:'systemInstruction',text:textOf(body.systemInstruction.parts)});
  if(Array.isArray(body.contents)) body.contents.forEach((m,i)=>{if(m.role==='user')sections.push({role:'user',field:`contents[${i}].parts`,text:textOf(m.parts)});});
  const privileged=sections.filter(s=>s.role!=='user');const text=privileged.map(s=>s.text).join('\n\n');
  return {roles:[...new Set(privileged.map(s=>s.role))],fields:privileged.map(s=>s.field),chars:text.length,
   sha256:createHash('sha256').update(text).digest('hex'),markerCount:marker?text.split(marker).length-1:0,
   userMarkerCount:marker?sections.filter(s=>s.role==='user').reduce((n,s)=>n+s.text.split(marker).length-1,0):0,
-  identityLines:text.split('\n').filter(l=>/^\s*(?:You are|You're|你是|您是)/i.test(l) && /Claude|ChatGPT|GPT|Gemini|Codex|Copilot|DeepSeek|OpenCode|CodeBuddy|Hermes|Grok|\bpi\b|\bomp\b|AI (?:agent|assistant|model)|coding assistant/i.test(l)).map(l=>l.slice(0,240)),
+  identityLines:text.split('\n').filter(l=>/^\s*(?:You are|You're|\u4f60\u662f|\u60a8\u662f)/i.test(l) && /Claude|ChatGPT|GPT|Gemini|Codex|Copilot|DeepSeek|OpenCode|CodeBuddy|Hermes|Grok|\bpi\b|\bomp\b|AI (?:agent|assistant|model)|coding assistant/i.test(l)).map(l=>l.slice(0,240)),
   toolDefinitions:Array.isArray(body.tools)?body.tools.length:0,text};
 }
 // Auxiliary requests can contain the same user query; never grade a title/summary as the main turn.
 export function requestKind(body, query = 'Reply CAPTURE_OK.') {
- // Augment 的当前回合在 message（字符串），历史在 chat_history。
+ // Augment puts the current turn in message (string) and history in chat_history.
  if(typeof body.message==='string'&&body.message.includes(query)) return 'main';
  const {text} = inspectRequest(body);
  const users = (body.messages ?? body.input ?? []).filter(m => m.role === 'user').map(m => textOf(m.content));
  // strict can replace the title system as well; its task envelope still identifies the auxiliary call.
  if (users.some(t => /^\s*Generate a title for this conversation:/i.test(t)) || /(?:^|\n)\s*(?:You are (?:tasked with generating the session title|a title generator)|You name conversations so the user can find them later|Create a concise title for an AI coding-assistant session|Write an ultra-short dashboard line)/i.test(text)) return 'auxiliary';
- // Gemini 原生协议把用户回合放在 contents[]，没有 messages/input
+ // Gemini native protocol places user turns in contents[], not messages/input.
  return JSON.stringify(body.messages ?? body.input ?? body.contents ?? '').includes(query) ? 'main' : 'unclassified';
 }
-// 结构化输出请求（responseJsonSchema / response_format）要回一份符合 schema 的 JSON，
-// 否则宿主会认为模型答非所问、无限重试，主回合根本发不出来。
+// Structured output requests (responseJsonSchema / response_format) need JSON conforming to the schema,
+// otherwise the host treats the response as invalid and retries indefinitely before the main turn.
 function sampleFor(schema) {
  if(!schema||typeof schema!=='object') return null;
  const t=String(schema.type||'').toUpperCase();
@@ -54,8 +54,8 @@ function structuredAnswer(body){
 function response(res, body, protocol, id) {
  const answer=structuredAnswer(body)??'CAPTURE_OK';const model=body.model||'capture';
  if(protocol==='gemini'){
-  // Gemini 原生：:streamGenerateContent?alt=sse 才回 SSE；:generateContent 必须回整包 JSON，
-  // 否则 CLI 的 JSON 解析器会读到 "data: {" 直接崩（分类器/路由这些内部调用走的就是非流式）。
+  // Gemini native: return SSE only for :streamGenerateContent?alt=sse; :generateContent must return complete JSON,
+  // or the CLI JSON parser crashes on "data: {" (internal classifiers and routing use non-streaming calls).
   const payload={candidates:[{content:{parts:[{text:answer}],role:'model'},finishReason:'STOP',index:0}],usageMetadata:{promptTokenCount:10,candidatesTokenCount:2,totalTokenCount:12}};
   if(!/streamGenerateContent/i.test(res.__url||'')&&!body.stream){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(payload));return;}
   res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache'});
@@ -86,12 +86,12 @@ export async function startCaptureProvider(outDir) {
   req.on('error',()=>{});res.on('error',()=>{});
   if(req.method==='CONNECT'||/^https?:\/\//i.test(req.url)){res.writeHead(403);res.end('No upstream forwarding');return;}
   if(req.method==='GET'&&/\/models(?:\?|$)/.test(req.url)){res.setHeader('content-type','application/json');res.end(JSON.stringify({object:'list',data:[{id:'capture',object:'model',created:1,owned_by:'fixture'}]}));return;}
-  // Gemini 原生走 /v1beta/models/<model>:streamGenerateContent?alt=sse
-  // Augment（auggie）：/get-models 与几个 settings/tools 是启动握手的 GET/POST，必须先答，否则主回合发不出来。
+  // Gemini native uses /v1beta/models/<model>:streamGenerateContent?alt=sse.
+  // Augment (auggie): answer /get-models and settings/tools GET/POST startup handshakes before the main turn.
   if(/^\/get-models(?:\?|$)/.test(req.url)){res.setHeader('content-type','application/json');res.end(JSON.stringify({default_model:'capture',models:[{name:'capture',suggested_prefix_char_count:0,suggested_suffix_char_count:0}]}));return;}
   if(/^\/settings\//.test(req.url)){res.setHeader('content-type','application/json');res.end('{}');return;}
   if(/^\/agents\/list-remote-tools/.test(req.url)){res.setHeader('content-type','application/json');res.end(JSON.stringify({tools:[]}));return;}
-  // auggie 的 -p（print）走 /chat，交互/agent 模式走 /chat-stream；两个都要接。
+  // auggie -p (print) uses /chat; interactive/agent mode uses /chat-stream. Handle both.
   if(req.method==='POST'&&/^\/chat(?:-stream)?(?:\?|$)/.test(req.url)){
    let s='';req.on('data',c=>{s+=c;if(s.length>8*1024*1024)req.destroy();});
    req.on('end',()=>{let body;try{body=JSON.parse(s);}catch{res.writeHead(400);res.end('{}');return;}
@@ -99,7 +99,7 @@ export async function startCaptureProvider(outDir) {
     if(outDir)writeFileSync(join(outDir,`request-${id}.json`),JSON.stringify(record,null,2));
     const answer=structuredAnswer(body)??'CAPTURE_OK';
     if(/chat-stream/.test(req.url)){
-     // /chat-stream 只认 SSE 帧（data: {json}），裸 NDJSON 会被静默丢弃。
+     // /chat-stream accepts SSE frames (data: {json}); raw NDJSON is silently discarded.
      res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache'});
      res.write('data: '+JSON.stringify({text:answer,stop_reason:'end_turn'})+'\n\n');res.end();
     }else{
