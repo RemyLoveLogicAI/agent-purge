@@ -38,6 +38,6 @@ test('private server failure revokes the lease and stops the child', async () =>
     let revoked = false, pid;
     await assert.rejects(startPrivateServer(process.execPath, { env: isolatedEnv(cwd), cwd, lease: { publish: value => pid = value, close: () => revoked = true } }), /readiness/);
     assert.equal(revoked, true); assert.ok(pid);
-    assert.throws(() => privateClientArgs(['--server=http://elsewhere'], 'http://127.0.0.1:1'), /移除 --server/);
+    assert.throws(() => privateClientArgs(['--server=http://elsewhere'], 'http://127.0.0.1:1'), /remove --server/);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
