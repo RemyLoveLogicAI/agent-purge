@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <wchar.h>
 
-/* 不经 cmd.exe：原始参数只由目标 Node 解析一次；保留退出码供安装/卸载检查。 */
+/* Avoid cmd.exe: the target Node parses original arguments only once; preserve the exit code for install/uninstall checks. */
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR ignored, int show) {
     (void)instance; (void)previous; (void)ignored; (void)show;
     wchar_t directory[32768], node[32768], command[32768];
@@ -13,7 +13,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR ignored, int sh
     *slash = L'\0';
     DWORD found = SearchPathW(NULL, L"node.exe", NULL, 32768, node, NULL);
     if (!found || found >= 32768) {
-        MessageBoxW(NULL, L"请安装 Node.js 20 或更高版本后重试。", L"agent-purge", MB_ICONERROR);
+        MessageBoxW(NULL, L"Install Node.js 20 or later and try again.", L"agent-purge", MB_ICONERROR);
         return 1;
     }
     const wchar_t *args = GetCommandLineW();
@@ -30,7 +30,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR ignored, int sh
     HANDLE activeMutex = CreateMutexW(NULL, FALSE, L"agent-purge-desktop-active");
     if (!CreateProcessW(node, command, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, directory, &startup, &process)) {
         if (activeMutex) CloseHandle(activeMutex);
-        MessageBoxW(NULL, L"启动失败。请检查安装目录和 Node.js。", L"agent-purge", MB_ICONERROR);
+        MessageBoxW(NULL, L"Launch failed. Check the installation directory and Node.js.", L"agent-purge", MB_ICONERROR);
         return 1;
     }
     CloseHandle(process.hThread);
