@@ -1,15 +1,15 @@
-# 应用范围
+# Application scope
 
-宿主给的接管入口不止一种，作用范围和生效时机都不同。先决定你想覆盖到哪一层，再选通道。
+Hosts expose more than one takeover entry point, with different scopes and activation times. Decide which layer you want to cover before choosing a channel.
 
-## 四种通道
+## Four channels
 
-| 通道 | 做什么 | 生效时机 |
+| Channel | What it does | When it takes effect |
 |---|---|---|
-| `install` | 写入宿主的托管配置或插件 | 静态配置需新会话；已加载动态插件下一轮读取 |
-| `shim` | 通过 PATH 中的同名命令转发启动 | 下一次从该命令启动 |
-| `slash` | 安装会话内 `/purge` 扩展 | 取决于宿主扩展和启用状态 |
-| `project` | 写入指定目录的项目规则文件 | 对应目录的新会话 |
+| `install` | Writes managed host configuration or a plugin | Static configuration requires a new session; a loaded dynamic plugin reads it on the next turn |
+| `shim` | Forwards launches through a command of the same name on PATH | Next launch using that command |
+| `slash` | Installs the in-session `/purge` extension | Depends on host extension and enabled state |
+| `project` | Writes project rule files in a specified directory | New sessions in that directory |
 
 ```bash
 agent-purge install codex
@@ -18,29 +18,29 @@ agent-purge project on pi --dir /path/to/project
 agent-purge status
 ```
 
-`arm <h>` 会尝试开启该执行器可用的常驻、命令和 slash 通道，结果逐项报告；项目通道需单独选择。同一人设经多个入口提供时可能重复，建议只开启需要的范围。
+`arm <h>` attempts every persistent, command, and slash channel available for that harness and reports each result. The project channel must be selected separately. A persona may be duplicated if it is provided through multiple entry points, so enable only the scopes you need.
 
-## 临时使用
+## One-time use
 
-只想临时用一次，可以通过 agent-purge 启动一次，不必登记常驻通道：
+For one-time use, launch through agent-purge without registering a persistent channel:
 
 ```bash
 agent-purge codex --mode append
-agent-purge pi --ask "解释这段代码"
-agent-purge codex -- --help          # -- 后的参数交给宿主
+agent-purge pi --ask "Explain this code"
+agent-purge codex -- --help          # Arguments after -- go to the host
 ```
 
-## 生效时机为什么不同
+## Why activation timing differs
 
-- **会话内热切**（`command` / `state`）：进程每轮重拼 system。Pi、pi-desktop、omp 靠 `before_agent_start` 钩子，OpenCode / dsh 靠插件每轮读状态。改设置下一轮就生效（pi-desktop 例外：替换以会话中途 system 补丁下发，模型不接受补丁时同会话看不到变化）。
-- **需新会话**：`system` 只在启动时拼一次。Claude、Codex、Grok、Kiro、Antigravity 等都属这类，改完必须重开会话。
+- **In-session hot switching** (`command` / `state`): The process rebuilds the system prompt each turn. Pi, pi-desktop, and omp use the `before_agent_start` hook; OpenCode and dsh plugins read state each turn. Settings changes apply on the next turn. Exception: pi-desktop sends replacement as a mid-session system patch, so a model that does not accept the patch will not show the change in that session.
+- **New session required**: `system` is assembled only at startup. Claude, Codex, Grok, Kiro, Antigravity, and others fall into this group; reopen the session after changes.
 
-逐家的热切能力见[支持情况](/reference/support)。
+See the [support matrix](/reference/support) for each host's hot-switch capabilities.
 
-## 项目规则共享
+## Shared project rules
 
-同一份规则可以按目录写入宿主自己的规则文件，供该目录下的会话读取。适合「这个仓库要用简洁风格、其他仓库保持默认」这类场景。写入前有 diff 预览，撤销时按原字节还原。
+The same rule can be written into a host's own rule file for a directory, for sessions in that directory to read. This suits cases such as using a concise style in one repository while leaving others at their defaults. A diff preview is available before writing, and undo restores the original bytes.
 
-## magpie 网关
+## magpie gateway
 
-如果使用 magpie 网关，可选插件位于仓库的 `magpie-plugin/` 目录，不是仓库根目录。安装方法和网关改写边界见该目录下的 README。
+The optional magpie gateway plugin is in the repository's `magpie-plugin/` directory, not its root. See that directory's README for installation and the gateway's rewriting boundaries.
